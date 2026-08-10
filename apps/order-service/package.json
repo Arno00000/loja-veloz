@@ -26,10 +26,10 @@
     "@loja-veloz/observability": "1.0.0",
     "@loja-veloz/shared-config": "1.0.0",
     "@loja-veloz/shared-types": "1.0.0",
-    "@prisma/client": "^6.1.0",
+    "@prisma/client": "^7.9.1",
     "express": "^4.21.1",
     "helmet": "^8.0.0",
-    "prisma": "^6.1.0",
+    "prisma": "^7.9.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
