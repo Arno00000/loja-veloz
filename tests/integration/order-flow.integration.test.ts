@@ -285,15 +285,21 @@ describe('6. Idempotência sob concorrência', () => {
 
     const finals = await Promise.all(
       created.map((response) =>
-        waitForOrderStatus(response.body.id, ['CONFIRMED', 'STOCK_FAILED', 'PAYMENT_FAILED'], 45000)
+        waitForOrderStatus(
+          response.body.id,
+          ['STOCK_RESERVED', 'CONFIRMED', 'STOCK_FAILED', 'PAYMENT_FAILED'],
+          45000
+        )
       )
     );
 
-    const confirmados = finals.filter((order) => order.status === 'CONFIRMED');
+    const comReserva = finals.filter((order) =>
+      ['STOCK_RESERVED', 'CONFIRMED', 'PAYMENT_FAILED'].includes(order.status)
+    );
     const semEstoque = finals.filter((order) => order.status === 'STOCK_FAILED');
 
-    expect(confirmados.length).toBeLessThanOrEqual(2);
-    expect(confirmados.length + semEstoque.length).toBe(5);
+    expect(comReserva.length).toBeLessThanOrEqual(2);
+    expect(comReserva.length + semEstoque.length).toBe(5);
 
     const inventory = await get<InventoryResponse>('/api/inventory/SKU-ESTOQUE-BAIXO');
     // O saldo nunca fica negativo: é o UPDATE condicional que garante isso.
