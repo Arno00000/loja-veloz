@@ -1,0 +1,26 @@
+# Copie para terraform.tfvars e ajuste. O arquivo real esta no .gitignore.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+
+aws_region  = "us-east-1"
+environment = "staging"
+
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+kubernetes_version = "1.31"
+
+# SPOT reduz o custo dos nos de forma significativa. As instancias podem ser
+# recuperadas pela AWS com 2 minutos de aviso, o que e aceitavel para cargas
+# stateless com graceful shutdown e PodDisruptionBudget.
+node_instance_types = ["t3.medium"]
+node_capacity_type  = "SPOT"
+
+# NAT Gateway DESLIGADO. Ver o aviso de custo em terraform/README.md.
+# Com false, os nos ficam em sub-rede publica e ainda alcancam o GHCR.
+enable_nat_gateway = false
+
+# Restrinja ao IP de saida do runner de CI e ao IP do seu escritorio.
+# 0.0.0.0/0 expoe o endpoint da API do Kubernetes a internet inteira; a
+# autenticacao continua exigida, mas a superficie fica desnecessariamente
+# grande.
+public_access_cidrs = ["0.0.0.0/0"]

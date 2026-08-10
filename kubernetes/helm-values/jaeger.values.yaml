@@ -1,0 +1,100 @@
+# Valores para o chart jaegertracing/jaeger e para o OpenTelemetry Collector.
+#
+# ATENÇÃO — allInOne com armazenamento em memória PERDE TODOS OS TRACES a cada
+# reinício do pod. É adequado para staging e demonstração, não para produção.
+# Em produção use a estratégia `production` com Elasticsearch ou Cassandra, ou
+# troque por Grafana Tempo com armazenamento em objeto.
+#
+# Instalação:
+#   helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
+#   helm upgrade --install jaeger jaegertracing/jaeger \
+#     --namespace observability --create-namespace \
+#     --version 3.3.1 \
+#     --values kubernetes/helm-values/jaeger.values.yaml
+#
+# Validação:
+#   kubectl port-forward -n observability svc/jaeger-query 16686:16686
+#   # abrir http://localhost:16686 e procurar o serviço api-gateway
+
+provisionDataStore:
+  cassandra: false
+  elasticsearch: false
+
+allInOne:
+  enabled: true
+  extraEnv:
+    - name: COLLECTOR_OTLP_ENABLED
+      value: "true"
+    - name: SPAN_STORAGE_TYPE
+      value: memory
+    - name: MEMORY_MAX_TRACES
+      value: "50000"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+storage:
+  type: memory
+
+agent:
+  enabled: false
+collector:
+  enabled: false
+query:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# OpenTelemetry Collector — instalado por um chart separado.
+#
+#   helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+#   helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+#     --namespace observability --create-namespace \
+#     --version 0.108.0 \
+#     --set mode=deployment \
+#     --set image.repository=otel/opentelemetry-collector-contrib \
+#     --values kubernetes/helm-values/jaeger.values.yaml
+#
+# A configuração abaixo espelha observability/otel-collector/otel-collector-config.yml,
+# ajustada para os nomes de serviço do cluster. É esse endpoint que os pods da
+# aplicação usam em OTEL_EXPORTER_OTLP_ENDPOINT.
+# ---------------------------------------------------------------------------
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  processors:
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 384
+      spike_limit_mib: 96
+    batch:
+      timeout: 5s
+      send_batch_size: 512
+    # Acrescenta metadados do cluster aos spans, o que permite distinguir a
+    # origem quando vários ambientes enviam para o mesmo backend.
+    k8sattributes:
+      auth_type: serviceAccount
+      extract:
+        metadata:
+          - k8s.namespace.name
+          - k8s.pod.name
+          - k8s.deployment.name
+          - k8s.node.name
+  exporters:
+    otlp/jaeger:
+      endpoint: jaeger-collector.observability.svc.cluster.local:4317
+      tls:
+        insecure: true
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, k8sattributes, batch]
+        exporters: [otlp/jaeger]

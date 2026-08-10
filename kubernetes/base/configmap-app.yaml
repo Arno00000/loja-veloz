@@ -1,0 +1,48 @@
+# Configuracao NAO sensivel, compartilhada pelos quatro servicos.
+#
+# A fronteira entre ConfigMap e Secret e simples: se vazar e um problema, e
+# Secret. Endpoints internos, timeouts e niveis de log nao sao segredo. URLs
+# de conexao com credencial embutida sao, e por isso ficam no Secret.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: loja-veloz
+data:
+  NODE_ENV: "production"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  SHUTDOWN_TIMEOUT_MS: "20000"
+  BODY_LIMIT: "100kb"
+
+  # Endereços internos, resolvidos pelo DNS do cluster.
+  ORDER_SERVICE_URL: "http://order-service:3001"
+  INVENTORY_SERVICE_URL: "http://inventory-service:3002"
+  PAYMENT_SERVICE_URL: "http://payment-service:3003"
+  UPSTREAM_TIMEOUT_MS: "5000"
+
+  # Observabilidade. O collector vive em outro namespace, por isso o nome
+  # completo do serviço (FQDN).
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318"
+  OTEL_TRACES_ENABLED: "true"
+  # 10% em produção: amostrar tudo sob tráfego real geraria custo e volume
+  # desproporcionais. Os overlays de dev e staging elevam esse valor.
+  OTEL_SAMPLING_RATIO: "0.1"
+
+  # Mensageria
+  RABBITMQ_PREFETCH: "20"
+  RABBITMQ_MAX_RETRIES: "3"
+  RABBITMQ_RETRY_DELAY_MS: "5000"
+  RABBITMQ_RECONNECT_MIN_MS: "1000"
+  RABBITMQ_RECONNECT_MAX_MS: "30000"
+
+  # Gateway
+  RATE_LIMIT_WINDOW_MS: "60000"
+  RATE_LIMIT_MAX: "300"
+  CORS_ALLOWED_ORIGINS: "https://loja-veloz.example.com"
+
+  # Recursos acadêmicos DESLIGADOS por padrão. O overlay de desenvolvimento
+  # os habilita; produção não.
+  INVENTORY_RESTOCK_ENABLED: "false"
+  PAYMENT_SIMULATION_ENABLED: "false"
+  PAYMENT_PROCESSING_DELAY_MS: "0"

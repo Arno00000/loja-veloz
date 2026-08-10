@@ -1,0 +1,79 @@
+// Schema exclusivo do Servico de Pedidos.
+//
+// Cada microsservico tem o seu proprio schema, o seu proprio banco logico e o
+// seu proprio usuario. Nao existe schema Prisma compartilhado, e nenhum
+// servico consulta tabelas de outro: a unica forma de comunicacao entre
+// dominios sao os eventos publicados no RabbitMQ.
+//
+// Comandos (executar dentro de apps/order-service):
+//   npx prisma generate                     gera o client em ../generated/prisma
+//   npx prisma migrate dev --name init      cria a migration inicial
+//   npx prisma migrate deploy               aplica migrations em staging/producao
+
+generator client {
+  provider = "prisma-client-js"
+  // Saida customizada: com varios schemas no mesmo monorepo, o destino padrao
+  // (node_modules/.prisma/client) seria sobrescrito pelo ultimo generate.
+  output   = "../generated/prisma"
+  // "native" cobre a maquina do desenvolvedor; o alvo debian cobre a imagem
+  // node:22-bookworm-slim usada nos conteineres.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  STOCK_RESERVED
+  CONFIRMED
+  STOCK_FAILED
+  PAYMENT_FAILED
+}
+
+model Order {
+  id         String      @id @default(uuid()) @db.Uuid
+  customerId String      @map("customer_id") @db.VarChar(64)
+  status     OrderStatus @default(PENDING)
+  total      Decimal     @db.Decimal(12, 2)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  items OrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  orderId   String  @map("order_id") @db.Uuid
+  sku       String  @db.VarChar(64)
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(12, 2)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// Registro de eventos ja processados por este servico.
+///
+/// O RabbitMQ entrega "ao menos uma vez". A restricao unica em eventId e a
+/// defesa contra reprocessamento: a insercao acontece dentro da MESMA
+/// transacao que altera o pedido, entao ou os dois efeitos acontecem ou
+/// nenhum acontece. Uma segunda entrega do mesmo evento viola a restricao e
+/// e reconhecida como duplicata.
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  eventType   String   @map("event_type") @db.VarChar(64)
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("processed_events")
+}

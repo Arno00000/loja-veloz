@@ -1,0 +1,17 @@
+# Staging roda com duas réplicas, como produção, para que o comportamento de
+# Rolling Update, PDB e balanceamento seja o mesmo que será observado depois.
+# Um staging com uma réplica não valida deploy sem indisponibilidade.
+#
+# `imagePullPolicy: Always` porque as tags aqui vêm do GHCR e o cluster deve
+# sempre buscar a imagem correspondente ao SHA, sem confiar em cache local.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder-substituido-pelo-target
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0

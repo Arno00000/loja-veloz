@@ -1,0 +1,43 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    uid: prometheus
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    uid: loki
+    jsonData:
+      # Correlacao log -> trace: o Grafana detecta o campo traceId no JSON do
+      # log e oferece um link direto para o trace no Jaeger. E o que permite
+      # sair de "este pedido falhou" para "veja onde ele demorou" em um clique.
+      derivedFields:
+        - name: TraceID
+          matcherRegex: '"traceId":"([a-f0-9]+)"'
+          url: "$${__value.raw}"
+          datasourceUid: jaeger
+
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    uid: jaeger
+    jsonData:
+      # Correlacao trace -> log: a partir de um span, o Grafana monta uma
+      # consulta no Loki filtrando pelo mesmo traceId.
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-2m"
+        spanEndTimeShift: "2m"
+        filterByTraceID: true
+        tags:
+          - key: service.name
+            value: service

@@ -1,0 +1,68 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: loja-veloz
+
+resources:
+  - ../../base
+
+nameSuffix: ""
+
+patches:
+  - path: patch-staging.yaml
+    target:
+      kind: Deployment
+
+  - target:
+      kind: Ingress
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.loja-veloz.example.com
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=debug
+      # Amostragem mais alta que produção: staging tem tráfego menor e o
+      # objetivo é justamente investigar comportamento antes do release.
+      - OTEL_SAMPLING_RATIO=0.5
+      - CORS_ALLOWED_ORIGINS=https://staging.loja-veloz.example.com
+      # Simulação de recusa LIGADA em staging: é o que permite validar o
+      # caminho de falha de pagamento de ponta a ponta no smoke test do
+      # pipeline, sem depender de um provedor externo.
+      - PAYMENT_SIMULATION_ENABLED=true
+      - PAYMENT_PROCESSING_DELAY_MS=100
+      - INVENTORY_RESTOCK_ENABLED=true
+
+# O Secret NÃO é gerado aqui. Ele é criado fora do Git, uma vez por cluster:
+#
+#   kubectl create secret generic app-secrets -n loja-veloz \
+#     --from-literal=ORDERS_DATABASE_URL='...' \
+#     --from-literal=INVENTORY_DATABASE_URL='...' \
+#     --from-literal=PAYMENTS_DATABASE_URL='...' \
+#     --from-literal=RABBITMQ_URL='...' \
+#     --from-literal=INVENTORY_ADMIN_KEY='...'
+#
+# Ver kubernetes/base/secret.example.yaml para o modelo com placeholders.
+
+generatorOptions:
+  # Com hash, qualquer mudança de ConfigMap gera um nome novo e força o
+  # rollout dos pods. Sem isso, alterar configuração não reinicia nada e o
+  # valor antigo continua em memória.
+  disableNameSuffixHash: false
+
+images:
+  # O pipeline substitui as tags com `kustomize edit set image` usando o SHA
+  # do commit. Ver .github/workflows/deploy-staging.yml.
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-api-gateway
+    newTag: sha-PLACEHOLDER
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-order-service
+    newTag: sha-PLACEHOLDER
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-inventory-service
+    newTag: sha-PLACEHOLDER
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-payment-service
+    newTag: sha-PLACEHOLDER

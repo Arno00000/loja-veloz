@@ -1,0 +1,111 @@
+# Valores para o chart grafana/alloy — coleta de logs no Kubernetes.
+#
+# Diferença importante em relação ao ambiente local: aqui NÃO se usa o socket
+# do Docker. A descoberta é pela API do Kubernetes, com uma ServiceAccount e
+# um ClusterRole de leitura, e os logs vêm de /var/log/pods. É o caminho
+# correto em cluster: montar o socket do runtime daria acesso privilegiado ao
+# nó a partir de um pod.
+#
+# Instalação:
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm upgrade --install alloy grafana/alloy \
+#     --namespace observability --create-namespace \
+#     --version 0.10.1 \
+#     --values kubernetes/helm-values/alloy.values.yaml
+#
+# Validação:
+#   kubectl logs -n observability -l app.kubernetes.io/name=alloy --tail=50
+#   # no Grafana: {namespace="loja-veloz"} deve retornar linhas
+
+controller:
+  # DaemonSet: um agente por nó, lendo apenas os pods daquele nó.
+  type: daemonset
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+
+alloy:
+  mounts:
+    varlog: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  configMap:
+    create: true
+    content: |
+      logging {
+        level  = "warn"
+        format = "logfmt"
+      }
+
+      discovery.kubernetes "pods" {
+        role = "pod"
+        namespaces {
+          names = ["loja-veloz"]
+        }
+      }
+
+      // Poucos labels, todos de baixa cardinalidade. `pod` é o de maior
+      // variação e ainda assim é limitado pelo teto do HPA.
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "service"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.process.app_logs.receiver]
+      }
+
+      loki.process "app_logs" {
+        stage.json {
+          expressions = {
+            level = "level",
+            time  = "time",
+          }
+        }
+
+        stage.timestamp {
+          source            = "time"
+          format            = "RFC3339"
+          action_on_failure = "fudge"
+        }
+
+        // traceId e correlationId permanecem no corpo da linha, e não como
+        // label: são de altíssima cardinalidade e derrubariam o índice.
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.observability.svc.cluster.local/loki/api/v1/push"
+        }
+      }

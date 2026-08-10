@@ -1,0 +1,218 @@
+name: Deploy staging
+
+# =============================================================================
+# PRÉ-REQUISITOS — sem TODOS eles, este workflow falha. Não há como ele
+# "funcionar mesmo assim", e afirmar o contrário seria desonesto.
+#
+#   1. Cluster Kubernetes acessível a partir do GitHub Actions
+#      (EKS público, ou um runner auto-hospedado na rede do cluster)
+#   2. Secret de repositório KUBE_CONFIG_STAGING com um kubeconfig em base64,
+#      cuja ServiceAccount tenha permissão apenas no namespace loja-veloz
+#   3. Namespace loja-veloz já criado no cluster
+#   4. Secret app-secrets já criado no namespace (ver kubernetes/README.md).
+#      Ele NÃO é criado por este pipeline: credenciais de banco não passam
+#      pelo GitHub Actions
+#   5. As imagens do commit já publicadas no GHCR pelo workflow "Imagens"
+#   6. O cluster com acesso de leitura ao GHCR (imagePullSecret, se o pacote
+#      for privado)
+#   7. Um GitHub Environment chamado "staging", idealmente com revisor
+#      obrigatório
+#
+# Enquanto esses itens não existirem, o workflow permanece como
+# workflow_dispatch e não roda automaticamente.
+# =============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag das imagens (ex.: sha-<commit completo>)"
+        required: true
+        type: string
+      skip_migrations:
+        description: "Pular as migrations do banco"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Nunca dois deploys simultâneos no mesmo ambiente. cancel-in-progress
+  # ficaria perigoso: cancelar um rollout pela metade deixa o cluster em
+  # estado misto.
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy em staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: https://staging.loja-veloz.example.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Configurar acesso ao cluster
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_STAGING }}
+        run: |
+          if [ -z "$KUBE_CONFIG" ]; then
+            echo "::error::Secret KUBE_CONFIG_STAGING não configurado. Ver os pré-requisitos no topo deste arquivo."
+            exit 1
+          fi
+          mkdir -p "$HOME/.kube"
+          echo "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Verificar pré-requisitos no cluster
+        run: |
+          kubectl cluster-info > /dev/null
+          kubectl get namespace loja-veloz > /dev/null
+          # O Secret precisa existir ANTES: sem ele os pods sobem em
+          # CreateContainerConfigError e o rollout trava até o timeout.
+          if ! kubectl get secret app-secrets -n loja-veloz > /dev/null 2>&1; then
+            echo "::error::Secret app-secrets ausente no namespace loja-veloz. Ver kubernetes/README.md."
+            exit 1
+          fi
+          echo "Pré-requisitos verificados."
+
+      - name: Guardar a revisão atual para rollback
+        id: current
+        run: |
+          {
+            for d in api-gateway order-service inventory-service payment-service; do
+              rev=$(kubectl get deploy "$d" -n loja-veloz \
+                -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}' 2>/dev/null || echo "")
+              echo "$d=$rev"
+            done
+          } > /tmp/revisions.txt
+          cat /tmp/revisions.txt
+
+      - name: Fixar as imagens do commit no overlay
+        working-directory: kubernetes/overlays/staging
+        env:
+          TAG: ${{ inputs.image_tag }}
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          for s in api-gateway order-service inventory-service payment-service; do
+            kubectl kustomize edit set image \
+              "ghcr.io/USUARIO_GITHUB/loja-veloz-$s=ghcr.io/$OWNER/loja-veloz-$s:$TAG" 2>/dev/null \
+            || sed -i "s|newTag: sha-PLACEHOLDER|newTag: $TAG|g; s|USUARIO_GITHUB|$OWNER|g" kustomization.yaml
+          done
+          cat kustomization.yaml
+
+      - name: Aplicar migrations
+        if: ${{ !inputs.skip_migrations }}
+        env:
+          TAG: ${{ inputs.image_tag }}
+        run: |
+          # Migrations como Job, e não como initContainer: com várias réplicas,
+          # um initContainer faria N pods migrarem ao mesmo tempo. Um Job roda
+          # uma vez, e o deploy só prossegue se ele terminar com sucesso.
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          for pair in "order:ORDERS" "inventory:INVENTORY" "payment:PAYMENTS"; do
+            svc="${pair%%:*}"; key="${pair##*:}"
+            job="migrate-$svc-${{ github.run_id }}"
+            kubectl create job "$job" -n loja-veloz \
+              --image="ghcr.io/$OWNER/loja-veloz-$svc-service:$TAG" \
+              --dry-run=client -o yaml \
+              | kubectl patch --local -f - --type=json -o yaml -p "[
+                  {\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/command\",\"value\":[\"npx\",\"prisma\",\"migrate\",\"deploy\"]},
+                  {\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env\",\"value\":[{\"name\":\"DATABASE_URL\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"app-secrets\",\"key\":\"${key}_DATABASE_URL\"}}}]},
+                  {\"op\":\"add\",\"path\":\"/spec/backoffLimit\",\"value\":2}
+                ]" \
+              | kubectl apply -f -
+            kubectl wait --for=condition=complete "job/$job" -n loja-veloz --timeout=300s
+            kubectl delete "job/$job" -n loja-veloz --ignore-not-found
+          done
+
+      - name: Aplicar manifests
+        run: |
+          kubectl apply -k kubernetes/overlays/staging
+          echo "Manifests aplicados."
+
+      - name: Aguardar rollout
+        id: rollout
+        run: |
+          failed=0
+          for d in api-gateway order-service inventory-service payment-service; do
+            echo "::group::rollout $d"
+            if ! kubectl rollout status "deployment/$d" -n loja-veloz --timeout=300s; then
+              echo "::error::Rollout de $d não concluiu no prazo."
+              failed=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $failed
+
+      - name: Smoke tests
+        id: smoke
+        env:
+          # Porta local encaminhada para o Service: evita depender de o Ingress
+          # já ter DNS e certificado publicados.
+          GATEWAY_URL: http://localhost:18080
+        run: |
+          kubectl port-forward -n loja-veloz svc/api-gateway 18080:8080 &
+          PF_PID=$!
+          sleep 5
+          set +e
+          bash tests/smoke/smoke.sh
+          RESULT=$?
+          set -e
+          kill $PF_PID 2>/dev/null || true
+          exit $RESULT
+
+      # Rollback automático só quando é seguro: reverter o Deployment é
+      # sempre reversível, mas NÃO desfaz migrations. Por isso o rollback é
+      # condicionado a `skip_migrations` — se o release alterou o schema, a
+      # decisão é humana e está descrita no runbook.
+      - name: Rollback automático
+        if: failure() && (steps.rollout.outcome == 'failure' || steps.smoke.outcome == 'failure') && inputs.skip_migrations
+        run: |
+          echo "::warning::Falha detectada. Revertendo os Deployments."
+          for d in api-gateway order-service inventory-service payment-service; do
+            kubectl rollout undo "deployment/$d" -n loja-veloz || true
+          done
+          for d in api-gateway order-service inventory-service payment-service; do
+            kubectl rollout status "deployment/$d" -n loja-veloz --timeout=300s || true
+          done
+
+      - name: Aviso de rollback manual necessário
+        if: failure() && !inputs.skip_migrations
+        run: |
+          {
+            echo "## Deploy falhou e o rollback NÃO foi automático"
+            echo ""
+            echo "Este release incluiu migrations. Reverter apenas os Deployments"
+            echo "colocaria a versão anterior do código contra o schema novo, o que"
+            echo "pode ser pior do que o estado atual."
+            echo ""
+            echo "Ver \`docs/runbook.md\`, seção \"Rollback com migration\"."
+            echo ""
+            echo '```bash'
+            echo "kubectl rollout undo deployment/<serviço> -n loja-veloz"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Resumo do deploy
+        if: success()
+        run: |
+          {
+            echo "## Deploy em staging concluído"
+            echo ""
+            echo "**Tag:** \`${{ inputs.image_tag }}\`"
+            echo "**Commit:** \`${{ github.sha }}\`"
+            echo "**Migrations:** ${{ inputs.skip_migrations && 'puladas' || 'aplicadas' }}"
+            echo ""
+            kubectl get deploy -n loja-veloz -o wide
+          } >> "$GITHUB_STEP_SUMMARY"

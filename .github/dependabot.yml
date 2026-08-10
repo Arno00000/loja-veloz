@@ -1,0 +1,42 @@
+# Atualização de dependências.
+#
+# Dependência desatualizada é dívida de segurança que cresce sozinha. O
+# Dependabot abre PRs, e o CI decide se passam — a combinação é o que torna a
+# atualização segura e rotineira em vez de um evento arriscado.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Agrupar reduz ruído e, no caso de famílias como o OpenTelemetry, evita
+      # o problema real de versões experimentais desalinhadas entre si.
+      opentelemetry:
+        patterns: ["@opentelemetry/*"]
+      prisma:
+        patterns: ["prisma", "@prisma/client"]
+      tipos:
+        patterns: ["@types/*"]
+      dev-tooling:
+        patterns: ["eslint*", "typescript-eslint", "prettier*", "jest", "ts-jest"]
+    labels: ["dependencias"]
+
+  - package-ecosystem: docker
+    directories:
+      - "/apps/api-gateway"
+      - "/apps/order-service"
+      - "/apps/inventory-service"
+      - "/apps/payment-service"
+    schedule:
+      interval: weekly
+    labels: ["dependencias", "docker"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels: ["dependencias", "ci"]

@@ -1,0 +1,47 @@
+// Schema exclusivo do Servico de Pagamentos. Banco payments_db, usuario
+// payments_user.
+//
+// Nenhum dado sensivel de meio de pagamento e armazenado: o MVP registra
+// apenas orderId, valor, status e uma referencia externa simulada. Nao ha
+// numero de cartao, CVV ou titular em lugar nenhum do sistema, o que mantem
+// o projeto fora do escopo de PCI DSS. Ver docs/threat-model.md.
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentStatus {
+  APPROVED
+  FAILED
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  orderId           String        @unique @map("order_id") @db.Uuid
+  status            PaymentStatus
+  amount            Decimal       @db.Decimal(12, 2)
+  externalReference String        @map("external_reference") @db.VarChar(128)
+  failureReason     String?       @map("failure_reason") @db.VarChar(256)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  eventType   String   @map("event_type") @db.VarChar(64)
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("processed_events")
+}

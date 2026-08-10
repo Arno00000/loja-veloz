@@ -1,0 +1,48 @@
+# Backend remoto do estado do Terraform.
+#
+# Renomeie para backend.tf e ajuste os valores. `backend.tf` esta no
+# .gitignore: o nome do bucket de estado e informacao de infraestrutura que
+# nao precisa ser publica.
+#
+# POR QUE O BACKEND REMOTO IMPORTA
+#
+# O arquivo de estado contem TODOS os atributos dos recursos, incluindo a
+# senha do RDS em texto claro. Mantido localmente, ele fica sem criptografia,
+# sem historico, sem bloqueio contra dois `apply` simultaneos, e some se a
+# maquina falhar.
+#
+# `use_lockfile = true` usa bloqueio nativo do S3 (Terraform 1.10+),
+# dispensando a tabela DynamoDB que versoes anteriores exigiam.
+#
+# CRIAR O BUCKET ANTES (o backend nao pode criar a si mesmo):
+#
+#   aws s3api create-bucket \
+#     --bucket loja-veloz-terraform-state-SUFIXO-UNICO \
+#     --region us-east-1
+#
+#   aws s3api put-bucket-versioning \
+#     --bucket loja-veloz-terraform-state-SUFIXO-UNICO \
+#     --versioning-configuration Status=Enabled
+#
+#   aws s3api put-bucket-encryption \
+#     --bucket loja-veloz-terraform-state-SUFIXO-UNICO \
+#     --server-side-encryption-configuration \
+#     '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+#
+#   aws s3api put-public-access-block \
+#     --bucket loja-veloz-terraform-state-SUFIXO-UNICO \
+#     --public-access-block-configuration \
+#     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+#
+# Versionamento e essencial: se um `apply` corromper o estado, a versao
+# anterior e recuperavel.
+
+terraform {
+  backend "s3" {
+    bucket       = "loja-veloz-terraform-state-SUFIXO-UNICO"
+    key          = "staging/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
+}

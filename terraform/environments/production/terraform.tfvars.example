@@ -1,0 +1,25 @@
+# Copie para terraform.tfvars e ajuste. O arquivo real esta no .gitignore.
+
+aws_region  = "us-east-1"
+environment = "production"
+
+# Tres zonas: tolera a perda de uma sem perder quorum nem capacidade.
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+kubernetes_version = "1.31"
+
+# ON_DEMAND (fixado no main.tf). Instancia SPOT recuperada pela AWS no meio de
+# um pico e exatamente o que nao se quer durante uma campanha promocional.
+node_instance_types = ["m6i.large"]
+
+# Familia M, e nao T: instancias burstable tem creditos de CPU que se esgotam
+# sob carga sustentada, e a partir dai o desempenho cai drasticamente.
+db_instance_class = "db.m6g.large"
+
+# NAO deixe 0.0.0.0/0 em producao. Restrinja aos IPs de saida do runner de CI
+# e da VPN corporativa.
+public_access_cidrs = [
+  # "203.0.113.10/32",  # IP de saida do runner de CI
+  # "198.51.100.0/24",  # faixa da VPN corporativa
+  "10.0.0.0/8",
+]

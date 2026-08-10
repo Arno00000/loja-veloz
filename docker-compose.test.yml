@@ -1,0 +1,196 @@
+# =============================================================================
+# Stack isolada para testes de integracao.
+#
+#   docker compose -f docker-compose.test.yml up --build -d
+#   npm run test:integration
+#   docker compose -f docker-compose.test.yml down -v
+#
+# Diferencas em relacao ao docker-compose.yml:
+#   - nome de projeto proprio (loja-veloz-test): volumes, rede e conteineres
+#     nao colidem com a stack de desenvolvimento, entao as duas podem coexistir;
+#   - sem observabilidade: Prometheus, Grafana, Loki, Alloy e Jaeger nao sao
+#     necessarios para validar o fluxo de negocio e so tornariam a subida lenta;
+#   - tracing desligado (OTEL_TRACES_ENABLED=false): sem collector no ar, o
+#     exportador acumularia falhas de conexao e poluiria a saida;
+#   - Gateway publicado em 18080, para nao conflitar com a stack de dev;
+#   - PAYMENT_PROCESSING_DELAY_MS=0: latencia artificial so atrapalha o teste;
+#   - RABBITMQ_RETRY_DELAY_MS=1000: encurta a espera ao exercitar retry;
+#   - credenciais proprias, descartaveis, validas apenas dentro desta rede.
+# =============================================================================
+
+name: loja-veloz-test
+
+x-test-env: &test-env
+  NODE_ENV: production
+  ENVIRONMENT: test
+  LOG_LEVEL: warn
+  OTEL_TRACES_ENABLED: "false"
+  RABBITMQ_URL: amqp://testuser:testpass@rabbitmq-test:5672
+  RABBITMQ_PREFETCH: "5"
+  RABBITMQ_MAX_RETRIES: "2"
+  RABBITMQ_RETRY_DELAY_MS: "1000"
+
+services:
+  postgres-test:
+    image: postgres:16-bookworm
+    networks: [test]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_test_only
+      POSTGRES_DB: postgres
+      ORDERS_DB_NAME: orders_db
+      ORDERS_DB_USER: orders_user
+      ORDERS_DB_PASSWORD: orders_test_only
+      INVENTORY_DB_NAME: inventory_db
+      INVENTORY_DB_USER: inventory_user
+      INVENTORY_DB_PASSWORD: inventory_test_only
+      PAYMENTS_DB_NAME: payments_db
+      PAYMENTS_DB_USER: payments_user
+      PAYMENTS_DB_PASSWORD: payments_test_only
+    volumes:
+      - ./database/postgres-init:/docker-entrypoint-initdb.d:ro
+    # tmpfs: o banco de teste e descartavel e roda inteiramente em memoria,
+    # o que acelera a suite e garante estado limpo a cada subida.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  rabbitmq-test:
+    image: rabbitmq:3.13-management
+    networks: [test]
+    environment:
+      RABBITMQ_DEFAULT_USER: testuser
+      RABBITMQ_DEFAULT_PASS: testpass
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  order-migrate-test:
+    build:
+      context: .
+      dockerfile: apps/order-service/Dockerfile
+    networks: [test]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://orders_user:orders_test_only@postgres-test:5432/orders_db?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+
+  inventory-migrate-test:
+    build:
+      context: .
+      dockerfile: apps/inventory-service/Dockerfile
+    networks: [test]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://inventory_user:inventory_test_only@postgres-test:5432/inventory_db?schema=public
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js"]
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+
+  payment-migrate-test:
+    build:
+      context: .
+      dockerfile: apps/payment-service/Dockerfile
+    networks: [test]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://payments_user:payments_test_only@postgres-test:5432/payments_db?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+
+  order-service-test:
+    build:
+      context: .
+      dockerfile: apps/order-service/Dockerfile
+    networks: [test]
+    environment:
+      <<: *test-env
+      SERVICE_NAME: order-service
+      PORT: "3001"
+      DATABASE_URL: postgresql://orders_user:orders_test_only@postgres-test:5432/orders_db?schema=public
+    depends_on:
+      rabbitmq-test:
+        condition: service_healthy
+      order-migrate-test:
+        condition: service_completed_successfully
+
+  inventory-service-test:
+    build:
+      context: .
+      dockerfile: apps/inventory-service/Dockerfile
+    networks: [test]
+    environment:
+      <<: *test-env
+      SERVICE_NAME: inventory-service
+      PORT: "3002"
+      DATABASE_URL: postgresql://inventory_user:inventory_test_only@postgres-test:5432/inventory_db?schema=public
+      INVENTORY_RESTOCK_ENABLED: "true"
+      INVENTORY_ADMIN_KEY: admin_test_only
+    depends_on:
+      rabbitmq-test:
+        condition: service_healthy
+      inventory-migrate-test:
+        condition: service_completed_successfully
+
+  payment-service-test:
+    build:
+      context: .
+      dockerfile: apps/payment-service/Dockerfile
+    networks: [test]
+    environment:
+      <<: *test-env
+      SERVICE_NAME: payment-service
+      PORT: "3003"
+      DATABASE_URL: postgresql://payments_user:payments_test_only@postgres-test:5432/payments_db?schema=public
+      PAYMENT_SIMULATION_ENABLED: "true"
+      PAYMENT_FAIL_CUSTOMER_ID: CUSTOMER-PAYMENT-FAIL
+      PAYMENT_PROCESSING_DELAY_MS: "0"
+    depends_on:
+      rabbitmq-test:
+        condition: service_healthy
+      payment-migrate-test:
+        condition: service_completed_successfully
+
+  api-gateway-test:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    networks: [test]
+    environment:
+      <<: *test-env
+      SERVICE_NAME: api-gateway
+      PORT: "8080"
+      ORDER_SERVICE_URL: http://order-service-test:3001
+      INVENTORY_SERVICE_URL: http://inventory-service-test:3002
+      PAYMENT_SERVICE_URL: http://payment-service-test:3003
+      CORS_ALLOWED_ORIGINS: http://localhost
+      # Limite alto: o objetivo aqui e validar o fluxo, nao o rate limit,
+      # que ja tem cobertura em teste unitario.
+      RATE_LIMIT_MAX: "10000"
+    ports:
+      - "18080:8080"
+    depends_on:
+      order-service-test:
+        condition: service_healthy
+      inventory-service-test:
+        condition: service_healthy
+      payment-service-test:
+        condition: service_healthy
+
+networks:
+  test:
+    driver: bridge

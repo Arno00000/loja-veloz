@@ -1,0 +1,56 @@
+# PodDisruptionBudget.
+#
+# Protege contra disrupções VOLUNTÁRIAS: drenagem de nó para manutenção,
+# upgrade do cluster, reescalonamento pelo Cluster Autoscaler. O PDB faz o
+# `kubectl drain` esperar em vez de derrubar as duas réplicas ao mesmo tempo.
+#
+# Não protege contra disrupção involuntária (nó que morre, OOM kill). Para
+# isso valem as réplicas e o topologySpreadConstraints.
+#
+# `minAvailable: 1` com `minReplicas: 2` permite que uma réplica seja
+# removida por vez. Usar `minAvailable: 2` aqui travaria a drenagem
+# indefinidamente sempre que o HPA estivesse no piso — um PDB impossível de
+# satisfazer impede manutenção do cluster.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway
+  namespace: loja-veloz
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service
+  namespace: loja-veloz
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: order-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: inventory-service
+  namespace: loja-veloz
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inventory-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service
+  namespace: loja-veloz
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payment-service

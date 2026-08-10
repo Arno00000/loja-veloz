@@ -1,0 +1,25 @@
+# Patch estratégico aplicado a TODOS os Deployments do overlay de
+# desenvolvimento (target: kind=Deployment no kustomization.yaml).
+#
+# Este patch toca apenas campos que existem em nível de Deployment e são
+# iguais para os quatro serviços. Ele NÃO mexe em `containers`: um patch
+# estratégico casa itens da lista de contêineres pelo campo `name`, então um
+# nome genérico aqui acrescentaria um contêiner novo em vez de alterar o
+# existente. Ajustes por contêiner (recursos) são feitos por patch JSON6902
+# no kustomization.yaml, onde o alvo é explícito.
+#
+# Uma réplica: o cluster local costuma ter um nó só. A consequência assumida é
+# que o Rolling Update aqui tem janela de indisponibilidade — aceitável em
+# desenvolvimento, e por isso maxUnavailable volta para 1. Em staging e
+# produção o valor permanece 0.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder-substituido-pelo-target
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1

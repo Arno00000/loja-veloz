@@ -1,0 +1,128 @@
+# Regras de alerta.
+#
+# No ambiente local nao ha Alertmanager configurado: as regras ficam visiveis
+# em Prometheus > Alerts e servem para demonstrar o desenho. Em producao, o
+# roteamento seria feito pelo Alertmanager instalado junto com o
+# kube-prometheus-stack (ver kubernetes/helm-values).
+#
+# Os limiares abaixo sao pontos de partida razoaveis para um MVP e devem ser
+# recalibrados com dados reais de trafego. Alerta mal calibrado gera fadiga e
+# acaba ignorado, o que e pior do que nao ter alerta.
+
+groups:
+  - name: disponibilidade
+    rules:
+      - alert: ServicoIndisponivel
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alvo {{ $labels.job }} sem resposta ha 2 minutos"
+          description: "O Prometheus nao consegue coletar metricas de {{ $labels.instance }}."
+
+      - alert: DependenciaIndisponivel
+        expr: dependency_up == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dependencia {{ $labels.dependency }} indisponivel em {{ $labels.service }}"
+          description: "O readiness reportou a dependencia como indisponivel por 3 minutos."
+
+      - alert: ConexaoBrokerCaida
+        expr: messaging_broker_connection_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} desconectado do RabbitMQ"
+          description: "Eventos deixam de ser publicados e consumidos enquanto isso durar."
+
+  - name: erros
+    rules:
+      - alert: TaxaDeErro5xxAlta
+        # Mais de 5% das requisicoes com erro de servidor em 5 minutos.
+        expr: |
+          sum by (service) (rate(http_errors_total{status_class="5xx"}[5m]))
+            /
+          sum by (service) (rate(http_requests_total[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taxa de 5xx acima de 5% em {{ $labels.service }}"
+
+      - alert: LatenciaP95Alta
+        # p95 acima de 1s sustentado indica degradacao perceptivel ao cliente.
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (service, le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 de latencia acima de 1s em {{ $labels.service }}"
+
+  - name: mensageria
+    rules:
+      - alert: MensagensNaDLQ
+        # Qualquer mensagem chegando na DLQ merece investigacao: significa que
+        # o retry ja falhou o numero maximo de vezes.
+        expr: increase(messaging_dead_lettered_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mensagens em DLQ na fila {{ $labels.queue }}"
+          description: "Motivo: {{ $labels.reason }}. Ver docs/runbook.md, secao DLQ."
+
+      - alert: RetriesElevados
+        expr: rate(messaging_retries_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Volume de retries elevado em {{ $labels.queue }}"
+          description: "Indica dependencia instavel ou erro sistematico no handler."
+
+      - alert: ProcessamentoDeEventoLento
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (queue, le) (rate(messaging_processing_duration_seconds_bucket[5m]))
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 de processamento acima de 5s na fila {{ $labels.queue }}"
+
+  - name: negocio
+    rules:
+      - alert: FalhasDePedidoAcimaDoEsperado
+        # Mais de 30% dos pedidos terminando em falha sugere problema real,
+        # e nao apenas os cenarios de demonstracao.
+        expr: |
+          sum(rate(orders_failed_total[15m]))
+            /
+          sum(rate(orders_created_total[15m]))
+            > 0.3
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mais de 30% dos pedidos falhando"
+          description: "Verificar saldo de estoque e o Servico de Pagamentos."
+
+      - alert: TransicoesInvalidasDetectadas
+        expr: increase(orders_invalid_transitions_total[15m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Transicoes de estado rejeitadas em volume anormal"
+          description: "Sugere eventos fora de ordem ou reprocessamento inesperado."

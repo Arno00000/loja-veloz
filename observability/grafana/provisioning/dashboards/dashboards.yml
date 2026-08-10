@@ -1,0 +1,16 @@
+apiVersion: 1
+
+providers:
+  - name: loja-veloz
+    orgId: 1
+    folder: Loja Veloz
+    type: file
+    disableDeletion: false
+    # Dashboards versionados em Git e provisionados por arquivo. Alteracoes
+    # feitas pela interface do Grafana sao efemeras: o objetivo e que o painel
+    # de referencia viva no repositorio, revisado como codigo.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -1,0 +1,131 @@
+# Valores para o chart kube-prometheus-stack (Prometheus Community).
+#
+# Componentes de terceiros são instalados por Helm, com os valores versionados
+# aqui. Copiar milhares de linhas de manifests gerados por um chart oficial
+# para dentro deste repositório, fingindo instalação manual, tornaria o
+# projeto impossível de atualizar. Os manifests AUTORAIS da aplicação ficam em
+# Kustomize; os de terceiros, em Helm com valores versionados.
+#
+# Instalação (a versão do chart é fixada de propósito — `latest` tornaria o
+# ambiente irreprodutível):
+#
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm upgrade --install kube-prometheus-stack \
+#     prometheus-community/kube-prometheus-stack \
+#     --namespace observability --create-namespace \
+#     --version 65.5.1 \
+#     --values kubernetes/helm-values/kube-prometheus-stack.values.yaml
+#
+# Validação:
+#   kubectl get pods -n observability
+#   kubectl port-forward -n observability svc/kube-prometheus-stack-prometheus 9090:9090
+#   # abrir http://localhost:9090/targets e conferir os quatro serviços
+
+fullnameOverride: kube-prometheus-stack
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    scrapeInterval: 15s
+
+    # Descoberta por label, e não por lista estática: pods novos criados pelo
+    # HPA passam a ser coletados sem nenhuma alteração de configuração.
+    # `false` aqui significa "não se restrinja aos ServiceMonitors com o label
+    # do release", ou seja, considere todos os do cluster.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+    # Coleta os pods da aplicação pelas annotations prometheus.io/* já
+    # presentes nos Deployments.
+    additionalScrapeConfigs:
+      - job_name: loja-veloz-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [loja-veloz]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels:
+              [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: replace
+            target_label: service
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+
+grafana:
+  enabled: true
+  # Senha de exemplo. Em produção use OIDC ou um Secret existente
+  # (`admin.existingSecret`), nunca um valor versionado.
+  adminPassword: admin
+  defaultDashboardsTimezone: browser
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki-gateway.observability.svc.cluster.local
+      uid: loki
+    - name: Jaeger
+      type: jaeger
+      access: proxy
+      url: http://jaeger-query.observability.svc.cluster.local:16686
+      uid: jaeger
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+# O Metrics Server é o que alimenta o HPA e não faz parte deste chart.
+# Instalar separadamente:
+#
+#   helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+#   helm upgrade --install metrics-server metrics-server/metrics-server \
+#     --namespace kube-system --version 3.12.2
+#
+# Em kind e em alguns clusters locais, os kubelets usam certificado
+# autoassinado e o Metrics Server falha até receber:
+#   --set args={--kubelet-insecure-tls}
+# Essa flag desabilita a verificação de certificado e só é aceitável em
+# ambiente local.
+#
+# Validação:  kubectl top pods -n loja-veloz

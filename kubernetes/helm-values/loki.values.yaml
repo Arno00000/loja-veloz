@@ -1,0 +1,74 @@
+# Valores para o chart grafana/loki.
+#
+# Instalação:
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm repo update
+#   helm upgrade --install loki grafana/loki \
+#     --namespace observability --create-namespace \
+#     --version 6.24.0 \
+#     --values kubernetes/helm-values/loki.values.yaml
+#
+# Validação:
+#   kubectl get pods -n observability -l app.kubernetes.io/name=loki
+#   # no Grafana: Explore > Loki > {namespace="loja-veloz"}
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    # Filesystem é adequado para staging e para o ambiente acadêmico. Em
+    # produção use `type: s3` com um bucket dedicado: armazenamento local não
+    # sobrevive à substituição do nó e não escala.
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  limits_config:
+    retention_period: 336h # 14 dias
+    ingestion_rate_mb: 16
+    ingestion_burst_size_mb: 32
+    allow_structured_metadata: true
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  persistence:
+    enabled: true
+    size: 20Gi
+
+# Componentes do modo distribuído desligados: em SingleBinary eles apenas
+# consumiriam recursos sem função.
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# O chart traz um Grafana Agent para autoinstrumentação que não usamos: a
+# coleta de logs é feita pelo Alloy, configurado separadamente.
+test:
+  enabled: false
+lokiCanary:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false

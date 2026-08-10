@@ -1,0 +1,101 @@
+// Grafana Alloy - coleta de logs dos conteineres.
+//
+// Por que descoberta pelo socket do Docker e nao leitura de arquivo:
+// os logs em JSON ficam em /var/lib/docker/containers/... no host. Em Docker
+// Desktop (Windows e macOS) esse caminho vive dentro de uma VM e nao e
+// acessivel de forma estavel a partir de um conteiner. A API do Docker, ao
+// contrario, funciona igual nas tres plataformas.
+//
+// O socket e montado como somente leitura. Ainda assim, acesso ao socket do
+// Docker equivale a acesso privilegiado ao host: aceitavel em ambiente local
+// de desenvolvimento, inaceitavel em producao. No Kubernetes a coleta usa
+// outro caminho, com ServiceAccount e RBAC proprios
+// (ver kubernetes/helm-values/alloy.values.yaml).
+
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "10s"
+}
+
+// Mantem apenas os conteineres deste projeto e traduz os metadados do Docker
+// em labels do Loki. Labels sao indexados: manter poucos e de baixa
+// cardinalidade e o que preserva o desempenho de consulta.
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "loja-veloz.*"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement  = "development"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  labels     = { job = "docker" }
+  forward_to = [loki.process.app_logs.receiver]
+}
+
+// As aplicacoes emitem JSON estruturado (pino). Extrair os campos permite
+// filtrar por nivel no Grafana e derivar labels uteis.
+loki.process "app_logs" {
+  stage.json {
+    expressions = {
+      level         = "level",
+      correlationId = "correlationId",
+      traceId       = "traceId",
+      msg           = "msg",
+      time          = "time",
+    }
+  }
+
+  // Usa o timestamp da propria aplicacao, e nao o da coleta. Sem isso, uma
+  // rajada de logs antigos apareceria com o horario errado na linha do tempo.
+  stage.timestamp {
+    source = "time"
+    format = "RFC3339"
+    // Falha silenciosa cai no timestamp da coleta, o que e aceitavel para
+    // linhas que nao sao JSON (saida de Postgres, RabbitMQ e Grafana).
+    action_on_failure = "fudge"
+  }
+
+  // `level` vira label: poucos valores possiveis, alta utilidade na consulta.
+  // `correlationId` e `traceId` NAO viram label: sao de altissima
+  // cardinalidade e derrubariam o indice do Loki. Ficam no conteudo da linha,
+  // onde a busca por texto resolve.
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -1,0 +1,387 @@
+# =============================================================================
+# Stack local completa da plataforma Pedidos Veloz.
+#
+#   cp .env.example .env          (PowerShell: Copy-Item .env.example .env)
+#   docker compose up --build
+#
+# Portas expostas no host:
+#   8080  API Gateway            15672 RabbitMQ Management
+#   3000  Grafana                16686 Jaeger UI
+#   9090  Prometheus             4317/4318 OpenTelemetry (gRPC/HTTP)
+#
+# PostgreSQL, RabbitMQ AMQP e os tres microsservicos internos NAO sao
+# publicados no host: so respondem dentro da rede do Compose. Reduzir a
+# superficie exposta e o comportamento correto por padrao. Para depurar o
+# banco, use `docker compose exec postgres psql ...`.
+#
+# `depends_on` com `condition: service_healthy` ordena a subida, mas NAO
+# substitui a resiliencia da aplicacao: os servicos reconectam sozinhos ao
+# RabbitMQ com backoff e o readiness segura o trafego enquanto uma
+# dependencia estiver fora. Queda no meio da operacao nao e coberta por
+# ordem de inicializacao.
+# =============================================================================
+
+name: loja-veloz
+
+x-app-common: &app-common
+  restart: unless-stopped
+  networks: [backend]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-app-env: &app-env
+  NODE_ENV: ${NODE_ENV:-development}
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  OTEL_TRACES_ENABLED: ${OTEL_TRACES_ENABLED:-true}
+  OTEL_SAMPLING_RATIO: ${OTEL_SAMPLING_RATIO:-1.0}
+  RABBITMQ_URL: ${RABBITMQ_URL}
+  RABBITMQ_PREFETCH: ${RABBITMQ_PREFETCH:-10}
+  RABBITMQ_MAX_RETRIES: ${RABBITMQ_MAX_RETRIES:-3}
+  RABBITMQ_RETRY_DELAY_MS: ${RABBITMQ_RETRY_DELAY_MS:-5000}
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infraestrutura
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-bookworm
+    container_name: loja-veloz-postgres
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPER_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      ORDERS_DB_NAME: ${ORDERS_DB_NAME}
+      ORDERS_DB_USER: ${ORDERS_DB_USER}
+      ORDERS_DB_PASSWORD: ${ORDERS_DB_PASSWORD}
+      INVENTORY_DB_NAME: ${INVENTORY_DB_NAME}
+      INVENTORY_DB_USER: ${INVENTORY_DB_USER}
+      INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD}
+      PAYMENTS_DB_NAME: ${PAYMENTS_DB_NAME}
+      PAYMENTS_DB_USER: ${PAYMENTS_DB_USER}
+      PAYMENTS_DB_PASSWORD: ${PAYMENTS_DB_PASSWORD}
+    ports:
+      # Publicado APENAS em 127.0.0.1, e nao em 0.0.0.0. O banco fica
+      # alcancavel pela sua maquina (necessario para rodar
+      # `npx prisma migrate dev` a partir do host) mas nao pela rede local.
+      # Em producao o banco nao e publicado de forma alguma.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Executado apenas na primeira subida, com o volume vazio.
+      - ./database/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPER_USER} -d ${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: loja-veloz-rabbitmq
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      # Somente a interface de gerenciamento. A porta AMQP (5672) fica
+      # acessivel apenas na rede interna.
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Migrations: rodam uma vez, terminam, e liberam a subida das aplicacoes.
+  # Reutilizam a imagem do proprio servico, entao usam exatamente a mesma
+  # versao do Prisma e do schema que o runtime.
+  # ---------------------------------------------------------------------------
+  order-migrate:
+    build:
+      context: .
+      dockerfile: apps/order-service/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-order-service:${IMAGE_TAG:-local}
+    container_name: loja-veloz-order-migrate
+    networks: [backend]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${ORDERS_DATABASE_URL}
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  inventory-migrate:
+    build:
+      context: .
+      dockerfile: apps/inventory-service/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-inventory-service:${IMAGE_TAG:-local}
+    container_name: loja-veloz-inventory-migrate
+    networks: [backend]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${INVENTORY_DATABASE_URL}
+    # Aplica as migrations e popula o catalogo deterministico de SKUs.
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  payment-migrate:
+    build:
+      context: .
+      dockerfile: apps/payment-service/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-payment-service:${IMAGE_TAG:-local}
+    container_name: loja-veloz-payment-migrate
+    networks: [backend]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${PAYMENTS_DATABASE_URL}
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Microsservicos
+  # ---------------------------------------------------------------------------
+  order-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: apps/order-service/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-order-service:${IMAGE_TAG:-local}
+    container_name: loja-veloz-order-service
+    environment:
+      <<: *app-env
+      SERVICE_NAME: order-service
+      PORT: 3001
+      DATABASE_URL: ${ORDERS_DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      order-migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  inventory-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: apps/inventory-service/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-inventory-service:${IMAGE_TAG:-local}
+    container_name: loja-veloz-inventory-service
+    environment:
+      <<: *app-env
+      SERVICE_NAME: inventory-service
+      PORT: 3002
+      DATABASE_URL: ${INVENTORY_DATABASE_URL}
+      INVENTORY_RESTOCK_ENABLED: ${INVENTORY_RESTOCK_ENABLED:-true}
+      INVENTORY_ADMIN_KEY: ${INVENTORY_ADMIN_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      inventory-migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  payment-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: apps/payment-service/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-payment-service:${IMAGE_TAG:-local}
+    container_name: loja-veloz-payment-service
+    environment:
+      <<: *app-env
+      SERVICE_NAME: payment-service
+      PORT: 3003
+      DATABASE_URL: ${PAYMENTS_DATABASE_URL}
+      PAYMENT_SIMULATION_ENABLED: ${PAYMENT_SIMULATION_ENABLED:-true}
+      PAYMENT_FAIL_CUSTOMER_ID: ${PAYMENT_FAIL_CUSTOMER_ID:-CUSTOMER-PAYMENT-FAIL}
+      PAYMENT_PROCESSING_DELAY_MS: ${PAYMENT_PROCESSING_DELAY_MS:-200}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      payment-migrate:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  api-gateway:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    image: ${IMAGE_REGISTRY:-loja-veloz}/loja-veloz-api-gateway:${IMAGE_TAG:-local}
+    container_name: loja-veloz-api-gateway
+    environment:
+      <<: *app-env
+      SERVICE_NAME: api-gateway
+      PORT: 8080
+      ORDER_SERVICE_URL: http://order-service:3001
+      INVENTORY_SERVICE_URL: http://inventory-service:3002
+      PAYMENT_SERVICE_URL: http://payment-service:3003
+      UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-5000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
+      BODY_LIMIT: ${BODY_LIMIT:-100kb}
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      order-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # ---------------------------------------------------------------------------
+  # Observabilidade
+  # ---------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: loja-veloz-otel-collector
+    restart: unless-stopped
+    networks: [backend]
+    command: ["--config=/etc/otel/config.yml"]
+    volumes:
+      - ./observability/otel-collector/otel-collector-config.yml:/etc/otel/config.yml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+    depends_on:
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: loja-veloz-jaeger
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: loja-veloz-prometheus
+    restart: unless-stopped
+    networks: [backend]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loja-veloz-loki
+    restart: unless-stopped
+    networks: [backend]
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: loja-veloz-alloy
+    restart: unless-stopped
+    networks: [backend]
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      # Descoberta de conteineres pelo socket do Docker. Funciona igual em
+      # Linux, macOS e Docker Desktop no Windows, ao contrario de ler os
+      # arquivos JSON de log, cujo caminho interno varia por plataforma.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    depends_on:
+      loki:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: loja-veloz-grafana
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  prometheus-data:
+  loki-data:
+  grafana-data:
+  alloy-data:

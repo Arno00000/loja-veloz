@@ -1,0 +1,173 @@
+# =============================================================================
+# NetworkPolicies — segmentação de rede dentro do namespace.
+#
+# ATENÇÃO: NetworkPolicy só tem efeito se o CNI do cluster a implementar.
+# Calico, Cilium e o VPC CNI da AWS com política habilitada implementam;
+# o CNI padrão do kind e do Docker Desktop NÃO. Nesses ambientes os manifests
+# são aceitos pela API e simplesmente ignorados — o que dá falsa sensação de
+# proteção. Ver kubernetes/README.md para como verificar.
+#
+# Desenho: negar tudo por padrão e abrir apenas o necessário. O resultado é
+# que o Gateway fala com os três serviços, os três serviços falam com banco e
+# broker, e nenhum serviço de backend fala com outro serviço de backend —
+# porque a comunicação entre domínios é por evento, não por HTTP.
+# =============================================================================
+
+# 1. Negar todo tráfego de entrada e saída no namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: loja-veloz
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# 2. DNS liberado para todos: sem resolução de nome nada funciona.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: loja-veloz
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# 3. Gateway: recebe do Ingress Controller, responde ao Prometheus.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-ingress
+  namespace: loja-veloz
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# 4. Gateway: sai apenas para os três serviços internos e para o collector.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-egress
+  namespace: loja-veloz
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: 3001
+        - protocol: TCP
+          port: 3002
+        - protocol: TCP
+          port: 3003
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4318
+---
+# 5. Backends: recebem só do Gateway e do Prometheus.
+#
+# Note o que NÃO está aqui: nenhuma regra permite que order-service fale com
+# inventory-service por HTTP. Isso é intencional e transforma a decisão
+# arquitetural (comunicação por evento) em restrição de rede efetiva.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-ingress
+  namespace: loja-veloz
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 3001
+        - protocol: TCP
+          port: 3002
+        - protocol: TCP
+          port: 3003
+---
+# 6. Backends: saem para PostgreSQL, RabbitMQ e collector.
+#
+# O bloco `ipBlock` cobre o caso de banco gerenciado fora do cluster (RDS).
+# `0.0.0.0/0` com porta 5672/5432 é permissivo demais para produção real: o
+# correto é restringir ao CIDR da VPC. Está assim para funcionar tanto com
+# dependências dentro do cluster (overlay de desenvolvimento) quanto fora.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-egress
+  namespace: loja-veloz
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: datastore
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 5672
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32 # bloqueia o metadata service da nuvem
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 5672
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4318

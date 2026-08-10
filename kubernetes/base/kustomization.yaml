@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: loja-veloz
+
+resources:
+  - namespace.yaml
+  - serviceaccounts.yaml
+  - configmap-app.yaml
+  - limitrange-resourcequota.yaml
+  - api-gateway.yaml
+  - order-service.yaml
+  - inventory-service.yaml
+  - payment-service.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - networkpolicies.yaml
+  - ingress.yaml
+  # secret.example.yaml NÃO entra aqui de propósito: é um modelo com
+  # placeholders. O Secret real é criado com `kubectl create secret` ou por um
+  # External Secrets Operator. Ver kubernetes/README.md.
+
+commonLabels:
+  app.kubernetes.io/part-of: pedidos-veloz
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  # Os overlays substituem `newTag` pelo SHA do commit. O placeholder aqui
+  # existe para que `kubectl kustomize base` produza YAML válido; ele nunca
+  # deve ser aplicado diretamente em um cluster.
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-api-gateway
+    newTag: sha-PLACEHOLDER
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-order-service
+    newTag: sha-PLACEHOLDER
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-inventory-service
+    newTag: sha-PLACEHOLDER
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-payment-service
+    newTag: sha-PLACEHOLDER

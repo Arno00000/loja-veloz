@@ -1,0 +1,35 @@
+# O contexto de build e SEMPRE a raiz do monorepo (ver docs/architecture.md).
+# Este arquivo reduz o contexto enviado ao daemon Docker.
+
+node_modules
+**/node_modules
+dist
+**/dist
+**/generated
+coverage
+**/coverage
+*.tsbuildinfo
+
+.git
+.github
+.gitignore
+.vscode
+.idea
+
+# Nunca enviar segredos para o contexto de build
+.env
+**/.env
+**/.env.local
+
+# Artefatos que nao pertencem a imagem
+terraform
+kubernetes
+observability
+docs
+tests
+data
+*.md
+!package.json
+docker-compose.yml
+docker-compose.test.yml
+Makefile

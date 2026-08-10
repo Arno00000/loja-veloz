@@ -1,0 +1,63 @@
+// Schema exclusivo do Servico de Estoque. Banco inventory_db, usuario
+// inventory_user. Nenhum outro servico le ou escreve nestas tabelas.
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  RESERVED
+  RELEASED
+}
+
+/// Saldo por SKU.
+///
+/// `availableQuantity` e o que pode ser vendido; `reservedQuantity` e o que
+/// esta comprometido com pedidos aguardando pagamento. Reservar move
+/// quantidade de um campo para o outro dentro de uma transacao, o que
+/// mantem a soma constante e evita venda dupla.
+model InventoryItem {
+  sku               String   @id @db.VarChar(64)
+  description       String   @default("") @db.VarChar(200)
+  availableQuantity Int      @default(0) @map("available_quantity")
+  reservedQuantity  Int      @default(0) @map("reserved_quantity")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("inventory_items")
+}
+
+/// Reserva de um SKU para um pedido.
+///
+/// A chave unica composta (orderId, sku) impede que a mesma reserva seja
+/// criada duas vezes caso order.created chegue repetido.
+model InventoryReservation {
+  id        String            @id @default(uuid()) @db.Uuid
+  orderId   String            @map("order_id") @db.Uuid
+  sku       String            @db.VarChar(64)
+  quantity  Int
+  status    ReservationStatus @default(RESERVED)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@unique([orderId, sku])
+  @@index([orderId])
+  @@index([status])
+  @@map("inventory_reservations")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id") @db.Uuid
+  eventType   String   @map("event_type") @db.VarChar(64)
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("processed_events")
+}

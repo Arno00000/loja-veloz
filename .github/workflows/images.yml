@@ -1,0 +1,163 @@
+name: Imagens
+
+# Constrói, escaneia e publica as quatro imagens no GitHub Container Registry.
+#
+# Executa em push na main (tag por SHA) e em tags de versão (tag semântica).
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Necessária para publicar no GHCR usando o GITHUB_TOKEN. Preferir o token
+  # do próprio workflow a um PAT: ele é de vida curta, tem escopo do
+  # repositório e é rotacionado automaticamente.
+  packages: write
+  # Necessária para enviar o resultado do Trivy para a aba Security.
+  security-events: write
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # fail-fast desligado: se o inventory-service quebrar, ainda queremos
+      # saber se os outros três estão bem.
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - order-service
+          - inventory-service
+          - payment-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Definir nome da imagem em minúsculas
+        # O GHCR exige o caminho todo em minúsculas; nomes de usuário e de
+        # organização no GitHub podem ter maiúsculas.
+        id: image
+        run: |
+          echo "name=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/loja-veloz-${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Autenticar no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular tags e labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=sha,prefix=sha-,format=long
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=loja-veloz-${{ matrix.service }}
+            org.opencontainers.image.description=Pedidos Veloz - ${{ matrix.service }}
+            org.opencontainers.image.licenses=MIT
+
+      # Constrói uma vez, carrega no daemon local para o Trivy escanear ANTES
+      # de publicar. Escanear depois do push significaria já ter distribuído
+      # uma imagem vulnerável.
+      - name: Build local para varredura
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          load: true
+          push: false
+          tags: ${{ steps.image.outputs.name }}:scan
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Varredura com Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.image.outputs.name }}:scan
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: CRITICAL,HIGH
+          # `ignore-unfixed`: vulnerabilidade sem correção disponível não deve
+          # bloquear o pipeline, porque não há ação possível — ela continua
+          # registrada no relatório.
+          ignore-unfixed: true
+          # exit-code 0 aqui: o resultado é PUBLICADO, não bloqueia. Quebrar o
+          # build por CVE de imagem base é uma decisão de política que precisa
+          # de processo de exceção; sem isso, o time acaba desabilitando o
+          # scan inteiro. Para bloquear, trocar para exit-code 1.
+          exit-code: "0"
+
+      - name: Publicar resultado na aba Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+      - name: Publicar imagem
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+
+      - name: Resumo
+        run: |
+          {
+            echo "### ${{ matrix.service }}"
+            echo ""
+            echo "**Digest:** \`${{ steps.push.outputs.digest }}\`"
+            echo ""
+            echo "**Tags publicadas:**"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  summary:
+    name: Resumo da publicação
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+      - name: Consolidar
+        run: |
+          {
+            echo "## Imagens publicadas"
+            echo ""
+            echo "| Serviço | Imagem |"
+            echo "|---|---|"
+            for s in api-gateway order-service inventory-service payment-service; do
+              echo "| $s | \`ghcr.io/${{ github.repository_owner }}/loja-veloz-$s:sha-${{ github.sha }}\` |"
+            done
+            echo ""
+            echo "### Por que não usar apenas \`latest\`"
+            echo ""
+            echo "\`latest\` é um ponteiro móvel: dois deploys \"da latest\" em"
+            echo "momentos diferentes instalam imagens diferentes. Isso torna o"
+            echo "ambiente irreprodutível, impede saber o que está rodando e"
+            echo "torna o rollback impossível — não existe \"latest anterior\"."
+            echo "A tag imutável por SHA é o que permite rastrear e reverter."
+          } >> "$GITHUB_STEP_SUMMARY"

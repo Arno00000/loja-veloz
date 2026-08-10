@@ -1,0 +1,36 @@
+# Produção: três réplicas como piso e antiafinidade por nó.
+#
+# `topologySpreadConstraints` na base usa `ScheduleAnyway`, que é uma
+# preferência. Aqui a antiafinidade é `preferredDuringScheduling` com peso
+# alto por zona: o escalonador tenta espalhar entre zonas de disponibilidade,
+# mas não bloqueia o agendamento se não conseguir — o que evita pods presos em
+# Pending durante uma indisponibilidade de zona, justamente quando eles são
+# mais necessários.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder-substituido-pelo-target
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: topology.kubernetes.io/zone
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/part-of: pedidos-veloz
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/part-of: pedidos-veloz

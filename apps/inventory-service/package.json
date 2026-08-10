@@ -1,0 +1,45 @@
+{
+  "name": "@loja-veloz/inventory-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servico de Estoque: disponibilidade, reserva e liberacao de itens",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --passWithNoTests",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "seed": "tsx src/seed.ts",
+    "seed:compiled": "node dist/seed.js"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@loja-veloz/messaging": "1.0.0",
+    "@loja-veloz/observability": "1.0.0",
+    "@loja-veloz/shared-config": "1.0.0",
+    "@loja-veloz/shared-types": "1.0.0",
+    "@prisma/client": "^6.1.0",
+    "express": "^4.21.1",
+    "helmet": "^8.0.0",
+    "prisma": "^6.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.9.0",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: loja-veloz
+  labels:
+    app.kubernetes.io/part-of: pedidos-veloz
+    # Pod Security Standards aplicados por label de namespace.
+    #
+    # "restricted" e o nivel mais rigoroso: exige runAsNonRoot,
+    # allowPrivilegeEscalation=false, drop de todas as capabilities e
+    # seccompProfile RuntimeDefault. Todos os Deployments deste projeto
+    # atendem a esses requisitos.
+    #
+    # `enforce` bloqueia, `audit` e `warn` registram. Manter os tres no mesmo
+    # nivel evita a surpresa de um recurso ser aceito em um cluster e
+    # rejeitado em outro.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

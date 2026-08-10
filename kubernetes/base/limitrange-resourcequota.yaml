@@ -1,0 +1,48 @@
+# LimitRange: valores padrão e tetos por contêiner.
+#
+# Funciona como rede de segurança. Um contêiner sem `requests` declarado
+# recebe o default abaixo, o que impede dois problemas: pod na classe
+# BestEffort (primeiro a ser despejado sob pressão de memória) e HPA sem base
+# de cálculo de CPU.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-limits
+  namespace: loja-veloz
+spec:
+  limits:
+    - type: Container
+      default:
+        memory: 512Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 2Gi
+      min:
+        cpu: 10m
+        memory: 64Mi
+---
+# ResourceQuota: teto agregado do namespace.
+#
+# Serve de contenção contra escalada descontrolada. Se um HPA mal configurado
+# tentar subir 200 pods, a quota barra antes de esgotar o cluster.
+#
+# Dimensionamento: soma dos `maxReplicas` (10 + 8 + 8 + 6 = 32 pods) com folga
+# para os pods extras do Rolling Update (maxSurge) e para os Jobs de migration.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: loja-veloz
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 12Gi
+    limits.memory: 24Gi
+    pods: "50"
+    services: "10"
+    persistentvolumeclaims: "4"
+    count/deployments.apps: "10"
+    count/jobs.batch: "10"

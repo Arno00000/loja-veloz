@@ -1,0 +1,89 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: loja-veloz
+
+resources:
+  - ../../base
+  # PostgreSQL e RabbitMQ dentro do cluster: SOMENTE para desenvolvimento.
+  # Ver o cabeçalho do arquivo para os motivos de não usar isso em produção.
+  - dependencies-academic.yaml
+
+# Uma réplica por serviço: o objetivo local é caber em um cluster de nó único
+# (kind, minikube, Docker Desktop), não demonstrar alta disponibilidade.
+patches:
+  - path: patch-development.yaml
+    target:
+      kind: Deployment
+
+  # Recursos reduzidos, por contêiner. Patch JSON6902 porque o alvo precisa
+  # ser explícito: cada Deployment tem um único contêiner, no índice 0.
+  # Imagens construídas localmente não existem em registry algum, então
+  # IfNotPresent evita ImagePullBackOff (em kind, use `kind load docker-image`).
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 25m
+            memory: 96Mi
+          limits:
+            memory: 384Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
+
+configMapGenerator:
+  - name: app-config
+    namespace: loja-veloz
+    behavior: merge
+    literals:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      # 100% de amostragem: em desenvolvimento o volume é baixo e ver todos os
+      # traces é justamente o ponto.
+      - OTEL_SAMPLING_RATIO=1.0
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4318
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://loja-veloz.local
+      # Recursos acadêmicos LIGADOS aqui, e apenas aqui.
+      - INVENTORY_RESTOCK_ENABLED=true
+      - PAYMENT_SIMULATION_ENABLED=true
+      - PAYMENT_PROCESSING_DELAY_MS=200
+
+# Secret gerado a partir de literais para o ambiente local. As credenciais
+# apontam para o PostgreSQL e o RabbitMQ do próprio cluster, definidos em
+# dependencies-academic.yaml, e são descartáveis.
+#
+# Isto NÃO é aceitável em staging ou produção: nesses overlays o Secret é
+# criado fora do Git. Aqui é tolerável porque nada disso dá acesso a nada real.
+secretGenerator:
+  - name: app-secrets
+    behavior: create
+    literals:
+      - ORDERS_DATABASE_URL=postgresql://orders_user:orders_dev_only@postgres:5432/orders_db?schema=public
+      - INVENTORY_DATABASE_URL=postgresql://inventory_user:inventory_dev_only@postgres:5432/inventory_db?schema=public
+      - PAYMENTS_DATABASE_URL=postgresql://payments_user:payments_dev_only@postgres:5432/payments_db?schema=public
+      - RABBITMQ_URL=amqp://lojaveloz:lojaveloz_dev_only@rabbitmq:5672
+      - INVENTORY_ADMIN_KEY=admin_dev_only
+
+generatorOptions:
+  # Sem sufixo de hash: facilita inspecionar e recriar manualmente durante o
+  # desenvolvimento. Em produção o hash é desejável, pois força o rollout
+  # quando a configuração muda.
+  disableNameSuffixHash: true
+
+images:
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-api-gateway
+    newName: loja-veloz/loja-veloz-api-gateway
+    newTag: local
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-order-service
+    newName: loja-veloz/loja-veloz-order-service
+    newTag: local
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-inventory-service
+    newName: loja-veloz/loja-veloz-inventory-service
+    newTag: local
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-payment-service
+    newName: loja-veloz/loja-veloz-payment-service
+    newTag: local

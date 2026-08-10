@@ -1,0 +1,59 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Testes
+coverage/
+junit.xml
+
+# Prisma Client gerado (output customizado por servico)
+apps/*/generated/
+
+# Ambiente - nunca versionar valores reais
+.env
+.env.local
+.env.*.local
+apps/*/.env
+apps/*/.env.local
+
+# Secrets do Kubernetes com valores reais
+kubernetes/**/secret.yaml
+kubernetes/**/*.secret.yaml
+!kubernetes/base/secret.example.yaml
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+backend.tf
+
+# Dados persistidos localmente
+data/
+postgres-data/
+rabbitmq-data/
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+*.bak
+
+*.bak

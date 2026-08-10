@@ -1,0 +1,177 @@
+name: CI
+
+# Executa em PR e em push nas branches principais. O objetivo é que nenhum
+# commit chegue à main sem passar por lint, tipos, testes e validação de
+# manifests.
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Permissões mínimas: este workflow só lê o repositório. Nada de escrita,
+# nada de packages. Cada workflow declara o que precisa e nada além.
+permissions:
+  contents: read
+
+# Um PR com vários pushes seguidos cancela as execuções anteriores, em vez de
+# manter fila de builds obsoletos.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  quality:
+    name: Lint, tipos e testes unitários
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Cache do npm baseado no lockfile. Exige que package-lock.json
+          # exista no repositório — gerado por `npm install` e versionado.
+          cache: npm
+
+      - name: Instalar dependências
+        # `npm ci` exige lockfile e falha se ele estiver dessincronizado do
+        # package.json. É exatamente o comportamento desejado em CI:
+        # instalação reproduzível, sem resolver versões de novo.
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        # Necessário antes do typecheck: o código importa tipos gerados a
+        # partir dos três schemas. Não acessa banco algum.
+        run: npm run prisma:generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verificar formatação
+        run: npm run format:check
+
+      - name: Verificação de tipos
+        run: npm run typecheck
+
+      - name: Testes unitários com cobertura
+        run: npm run test:coverage
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            packages/*/coverage
+            apps/*/coverage
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Build
+        run: npm run build
+
+  integration:
+    name: Testes de integração
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Subir a stack de teste
+        # Stack isolada, sem observabilidade, com nome de projeto próprio.
+        run: docker compose -f docker-compose.test.yml up --build -d --wait
+
+      - name: Executar testes de integração
+        env:
+          GATEWAY_URL: http://localhost:18080
+        run: npm run test:integration
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose -f docker-compose.test.yml logs --tail=200
+
+      - name: Derrubar a stack
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  manifests:
+    name: Validação de manifests e IaC
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar docker-compose
+        # `config` faz o parse, resolve variáveis e valida o esquema, sem
+        # subir nada. O .env.example é usado como fonte das variáveis.
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose -f docker-compose.test.yml config --quiet
+
+      - name: Instalar kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Renderizar overlays do Kustomize
+        # Não exige cluster. Falha se houver referência quebrada, patch
+        # inválido ou recurso ausente em qualquer overlay.
+        run: |
+          for overlay in development staging production; do
+            echo "::group::overlay $overlay"
+            kubectl kustomize "kubernetes/overlays/$overlay" > "/tmp/$overlay.yaml"
+            echo "$(grep -c '^kind:' "/tmp/$overlay.yaml") recursos renderizados"
+            echo "::endgroup::"
+          done
+
+      - name: Verificar que nenhum Secret real foi versionado
+        # Rede de segurança: o secret.example.yaml só pode conter
+        # placeholders, e nenhum secret.yaml pode existir no repositório.
+        run: |
+          if git ls-files | grep -E 'kubernetes/.*/secret\.yaml$'; then
+            echo "ERRO: Secret real versionado no repositório."
+            exit 1
+          fi
+          if grep -rn "stringData:" kubernetes/base/secret.example.yaml | grep -qv SUBSTITUIR; then
+            grep -n "SUBSTITUIR" kubernetes/base/secret.example.yaml > /dev/null || {
+              echo "ERRO: secret.example.yaml parece conter valores reais."
+              exit 1
+            }
+          fi
+          echo "OK: nenhum Secret real encontrado."
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive terraform
+
+      - name: Terraform validate
+        # `-backend=false` permite validar sem credenciais da AWS e sem
+        # acessar o backend remoto. `validate` NÃO cria recurso algum e NÃO
+        # consulta a API da AWS.
+        run: |
+          for env in staging production; do
+            echo "::group::terraform validate $env"
+            terraform -chdir="terraform/environments/$env" init -backend=false -input=false
+            terraform -chdir="terraform/environments/$env" validate
+            echo "::endgroup::"
+          done

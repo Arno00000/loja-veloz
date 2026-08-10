@@ -1,0 +1,167 @@
+# =============================================================================
+# Horizontal Pod Autoscaler (autoscaling/v2).
+#
+# Depende do Metrics Server instalado no cluster. Sem ele, o HPA reporta
+# "unknown" e não escala — é a causa mais comum de HPA parado.
+#   Verificar:  kubectl top pods -n loja-veloz
+#   Instalar:   ver kubernetes/README.md
+#
+# O alvo de utilização é calculado sobre o `requests` de CPU, NÃO sobre o
+# limite nem sobre a capacidade do nó. Um Deployment sem `requests.cpu` torna
+# o HPA inoperante. Por isso todos os quatro declaram `requests.cpu`.
+#
+# NÃO usar VPA junto com este HPA sobre CPU ou memória no mesmo Deployment: os
+# dois controladores disputariam o mesmo recurso — o VPA alterando `requests`,
+# o HPA calculando percentuais sobre esse valor em movimento — e o resultado é
+# oscilação. VPA e HPA só convivem quando atuam sobre recursos distintos.
+#
+# EVOLUÇÃO: CPU é uma aproximação ruim para consumidores de fila. Um pico de
+# mensagens acumuladas não necessariamente aparece como CPU alta, então o
+# sistema escalaria tarde. O KEDA resolve isso escalando pela profundidade da
+# fila no RabbitMQ (ver docs/limitations-and-roadmap.md).
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway
+  namespace: loja-veloz
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          # 60% deixa margem para a rajada que chega entre dois ciclos de
+          # avaliação do HPA. Alvos acima de 80% costumam escalar tarde demais.
+          averageUtilization: 60
+  behavior:
+    scaleUp:
+      # Janela curta na subida: sob pico, reagir rápido é o objetivo.
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      # Janela longa na descida evita o efeito sanfona: um vale momentâneo não
+      # deve remover réplicas que serão necessárias em seguida.
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service
+  namespace: loja-veloz
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 2
+  # Teto menor que o do Gateway: cada réplica abre conexões com o PostgreSQL
+  # (connection_limit=10 na URL). 8 réplicas significam até 80 conexões só
+  # deste serviço. O `max_connections` do banco é o limite real de escala
+  # horizontal aqui, e ignorá-lo troca um gargalo de CPU por um de banco.
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: inventory-service
+  namespace: loja-veloz
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: inventory-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payment-service
+  namespace: loja-veloz
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: payment-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120

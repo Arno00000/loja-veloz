@@ -1,0 +1,110 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: loja-veloz
+
+resources:
+  - ../../base
+
+patches:
+  - path: patch-production.yaml
+    target:
+      kind: Deployment
+
+  - target:
+      kind: Ingress
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: loja-veloz.example.com
+
+  # Pisos de réplica mais altos no HPA. Produção não deve descer a 2 réplicas
+  # em nenhum momento: um pico repentino levaria tempo demais para ser
+  # absorvido a partir do piso mínimo.
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: order-service
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 12
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: inventory-service
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 12
+
+  # Com piso de 3 réplicas, o PDB pode exigir 2 disponíveis sem travar a
+  # drenagem de nós.
+  - target:
+      kind: PodDisruptionBudget
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+  - target:
+      kind: PodDisruptionBudget
+      name: order-service
+    patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+      # 10%: amostrar tudo sob tráfego real geraria custo e volume
+      # desproporcionais ao ganho de diagnóstico.
+      - OTEL_SAMPLING_RATIO=0.1
+      - CORS_ALLOWED_ORIGINS=https://loja-veloz.example.com
+      - RATE_LIMIT_MAX=600
+      - RABBITMQ_PREFETCH=30
+      # Recursos acadêmicos DESLIGADOS. O endpoint de reposição não existe em
+      # produção e o simulador aprova qualquer cliente — em um sistema real,
+      # aqui entraria a integração com o provedor de pagamento.
+      - INVENTORY_RESTOCK_ENABLED=false
+      - PAYMENT_SIMULATION_ENABLED=false
+      - PAYMENT_PROCESSING_DELAY_MS=0
+
+# Secret criado fora do Git. Em produção, a recomendação é External Secrets
+# Operator lendo do AWS Secrets Manager, com rotação automática.
+# Ver docs/limitations-and-roadmap.md.
+
+generatorOptions:
+  disableNameSuffixHash: false
+
+images:
+  # Em produção a tag é semântica (release), e não o SHA: um release é um
+  # artefato identificável e comunicável, e o rollback é para uma versão
+  # nomeada. O SHA continua existindo como tag adicional da mesma imagem.
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-api-gateway
+    newTag: "1.0.0"
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-order-service
+    newTag: "1.0.0"
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-inventory-service
+    newTag: "1.0.0"
+  - name: ghcr.io/USUARIO_GITHUB/loja-veloz-payment-service
+    newTag: "1.0.0"

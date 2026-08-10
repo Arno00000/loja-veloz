@@ -1,0 +1,55 @@
+{
+  "name": "loja-veloz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pedidos Veloz - plataforma de pedidos em microsservicos com CI/CD, Kubernetes e observabilidade",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w @loja-veloz/shared-types -w @loja-veloz/shared-config -w @loja-veloz/observability -w @loja-veloz/messaging",
+    "build:apps": "npm run build -w @loja-veloz/api-gateway -w @loja-veloz/order-service -w @loja-veloz/inventory-service -w @loja-veloz/payment-service",
+    "build": "npm run build:packages && npm run prisma:generate && npm run build:apps",
+    "clean": "node -e \"const{rmSync}=require('fs');for(const p of ['packages/shared-types/dist','packages/shared-config/dist','packages/observability/dist','packages/messaging/dist','apps/api-gateway/dist','apps/order-service/dist','apps/inventory-service/dist','apps/payment-service/dist','coverage'])rmSync(p,{recursive:true,force:true})\"",
+    "prisma:generate": "npm run prisma:generate -w @loja-veloz/order-service -w @loja-veloz/inventory-service -w @loja-veloz/payment-service",
+    "prisma:migrate:dev": "npm run prisma:migrate:dev -w @loja-veloz/order-service -w @loja-veloz/inventory-service -w @loja-veloz/payment-service",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w @loja-veloz/order-service -w @loja-veloz/inventory-service -w @loja-veloz/payment-service",
+    "seed": "npm run seed -w @loja-veloz/inventory-service",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
+    "test": "npm run build:packages && npm run test --workspaces --if-present",
+    "test:only": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run build:packages && npm run test:coverage --workspaces --if-present",
+    "test:integration": "jest --config tests/integration/jest.config.js --runInBand",
+    "compose:up": "docker compose up --build -d",
+    "compose:down": "docker compose down -v",
+    "compose:logs": "docker compose logs -f --tail=100",
+    "compose:config": "docker compose config",
+    "k8s:render:dev": "kubectl kustomize kubernetes/overlays/development",
+    "k8s:dryrun:dev": "kubectl apply --dry-run=client -k kubernetes/overlays/development"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.9.0",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.2"
+  }
+}

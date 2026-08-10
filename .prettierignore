@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+**/generated
+package-lock.json
+.terraform
+*.tfstate
+observability/grafana/dashboards

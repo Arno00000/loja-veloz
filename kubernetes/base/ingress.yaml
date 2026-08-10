@@ -1,0 +1,45 @@
+# Ingress do NGINX Ingress Controller.
+#
+# Pré-requisito: o controller precisa estar instalado no cluster (ver
+# kubernetes/README.md). Sem ele, o Ingress é criado mas nunca recebe endereço
+# — sintoma típico: `kubectl get ingress` com a coluna ADDRESS vazia.
+#
+# Só o Gateway é exposto. Os três serviços de backend não têm Ingress: são
+# alcançáveis apenas de dentro do cluster, e a NetworkPolicy reforça isso.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: loja-veloz
+  annotations:
+    # O Gateway já aplica rate limit por IP na aplicação. Este limite no
+    # Ingress é uma segunda camada, mais grosseira, que protege o próprio
+    # cluster de uma rajada antes que ela chegue ao pod.
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    # Propaga o trace context recebido do cliente para o Gateway.
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: loja-veloz.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+# TLS: em produção, adicionar a seção abaixo com cert-manager emitindo o
+# certificado. Fica fora da base porque exige um emissor configurado e um
+# domínio real, que não existem no ambiente acadêmico.
+#
+#  tls:
+#    - hosts:
+#        - loja-veloz.example.com
+#      secretName: loja-veloz-tls
