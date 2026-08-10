@@ -24,13 +24,13 @@ de terceiro, Helm com valores versionados.**
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **YAML duplicado por ambiente** | Diverge sozinho. Não é alternativa séria |
-| **Helm para tudo, inclusive a aplicação** | Templates com `{{ }}` transformam YAML em uma linguagem de template: o arquivo deixa de ser YAML válido e não pode ser validado sem renderizar. Para 13 manifests próprios, o ganho não compensa a perda de legibilidade |
-| **Copiar os manifests dos charts oficiais** | **Rejeitado explicitamente.** Copiar centenas de linhas geradas por um chart oficial para o repositório, fingindo instalação manual, torna a atualização impossível e é desonesto quanto à origem do código |
-| **jsonnet / ytt** | Mais poderosos, muito menos difundidos. Custo de aprendizado sem retorno proporcional |
-| **Só arquivos de patch com `kubectl patch`** | Imperativo, não versionável como estado desejado |
+| Alternativa                                  | Por que não                                                                                                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **YAML duplicado por ambiente**              | Diverge sozinho. Não é alternativa séria                                                                                                                                                                                 |
+| **Helm para tudo, inclusive a aplicação**    | Templates com `{{ }}` transformam YAML em uma linguagem de template: o arquivo deixa de ser YAML válido e não pode ser validado sem renderizar. Para 13 manifests próprios, o ganho não compensa a perda de legibilidade |
+| **Copiar os manifests dos charts oficiais**  | **Rejeitado explicitamente.** Copiar centenas de linhas geradas por um chart oficial para o repositório, fingindo instalação manual, torna a atualização impossível e é desonesto quanto à origem do código              |
+| **jsonnet / ytt**                            | Mais poderosos, muito menos difundidos. Custo de aprendizado sem retorno proporcional                                                                                                                                    |
+| **Só arquivos de patch com `kubectl patch`** | Imperativo, não versionável como estado desejado                                                                                                                                                                         |
 
 ## Consequências positivas
 
@@ -58,12 +58,12 @@ de terceiro, Helm com valores versionados.**
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Overlay quebrado só descoberto no apply | `kubectl kustomize` dos três overlays roda no CI a cada PR |
-| Patch silenciosamente sem efeito | Renderizar e conferir; a armadilha do `containers` está documentada no próprio arquivo de patch |
-| Secret real versionado por engano | Só `secret.example.yaml` com placeholders é versionado; o CI **verifica** que nenhum `secret.yaml` existe no repositório |
-| Divergência entre overlay e realidade do cluster | `kubectl apply -k` é sempre a fonte da verdade; alteração manual no cluster é sobrescrita |
+| Risco                                            | Mitigação                                                                                                                |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Overlay quebrado só descoberto no apply          | `kubectl kustomize` dos três overlays roda no CI a cada PR                                                               |
+| Patch silenciosamente sem efeito                 | Renderizar e conferir; a armadilha do `containers` está documentada no próprio arquivo de patch                          |
+| Secret real versionado por engano                | Só `secret.example.yaml` com placeholders é versionado; o CI **verifica** que nenhum `secret.yaml` existe no repositório |
+| Divergência entre overlay e realidade do cluster | `kubectl apply -k` é sempre a fonte da verdade; alteração manual no cluster é sobrescrita                                |
 
 ## Critérios de revisão
 

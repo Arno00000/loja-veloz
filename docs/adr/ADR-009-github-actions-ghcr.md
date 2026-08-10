@@ -15,25 +15,25 @@ O código já vive no GitHub.
 **GitHub Actions** para CI/CD e **GitHub Container Registry (GHCR)** para as
 imagens, em três workflows:
 
-| Workflow | Gatilho | Faz |
-|---|---|---|
-| `ci.yml` | PR e push | lint, format, typecheck, testes unitários e de integração, build, validação de Compose, Kustomize e Terraform |
-| `images.yml` | main e tags | build em matriz, Trivy **antes** do push, publicação com tag por SHA |
-| `deploy-staging.yml` | `workflow_dispatch` | Job de migration, apply, rollout, smoke, rollback condicional |
+| Workflow             | Gatilho             | Faz                                                                                                           |
+| -------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`             | PR e push           | lint, format, typecheck, testes unitários e de integração, build, validação de Compose, Kustomize e Terraform |
+| `images.yml`         | main e tags         | build em matriz, Trivy **antes** do push, publicação com tag por SHA                                          |
+| `deploy-staging.yml` | `workflow_dispatch` | Job de migration, apply, rollout, smoke, rollback condicional                                                 |
 
 Autenticação no GHCR pelo `GITHUB_TOKEN`, com `permissions: packages: write`
 declarado apenas onde é necessário.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Jenkins** | Exigiria servidor próprio para instalar, atualizar e proteger. Custo operacional desproporcional |
-| **GitLab CI** | Excelente, mas o código está no GitHub. Migrar por causa do CI seria inverter a prioridade |
-| **CircleCI / Travis** | Mais uma conta, mais um segredo, mais uma integração. Sem ganho sobre o Actions no caso |
-| **Docker Hub** | Limite de pulls anônimos e mais um conjunto de credenciais para gerenciar |
-| **Amazon ECR** | Bom encaixe com EKS, mas exigiria credencial da AWS já no build, e amarraria as imagens ao provedor |
-| **Argo CD (GitOps)** | Modelo superior de deploy — é a evolução indicada. Exige um controlador no cluster e mudança do fluxo para pull. Fora do escopo de 4 semanas |
+| Alternativa           | Por que não                                                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Jenkins**           | Exigiria servidor próprio para instalar, atualizar e proteger. Custo operacional desproporcional                                             |
+| **GitLab CI**         | Excelente, mas o código está no GitHub. Migrar por causa do CI seria inverter a prioridade                                                   |
+| **CircleCI / Travis** | Mais uma conta, mais um segredo, mais uma integração. Sem ganho sobre o Actions no caso                                                      |
+| **Docker Hub**        | Limite de pulls anônimos e mais um conjunto de credenciais para gerenciar                                                                    |
+| **Amazon ECR**        | Bom encaixe com EKS, mas exigiria credencial da AWS já no build, e amarraria as imagens ao provedor                                          |
+| **Argo CD (GitOps)**  | Modelo superior de deploy — é a evolução indicada. Exige um controlador no cluster e mudança do fluxo para pull. Fora do escopo de 4 semanas |
 
 ## Consequências positivas
 
@@ -57,14 +57,14 @@ declarado apenas onde é necessário.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Segredo exposto em log | Mascaramento automático do Actions; nenhum `echo` de variável sensível; verificação no CI de que não há Secret real versionado |
-| Workflow com permissão excessiva | `permissions` declarado explicitamente por workflow, com o mínimo necessário |
-| Imagem vulnerável publicada | Trivy roda **antes** do push, sobre a imagem carregada no daemon local |
-| Deploy com credencial de cluster no CI | ServiceAccount restrita ao namespace `loja-veloz`; Environment `staging` com revisor obrigatório |
-| Action de terceiro comprometida | Todas fixadas por versão maior (`@v4`, `@v6`); fixar por SHA seria mais rigoroso e está registrado como melhoria |
-| Deploy falhar por pré-requisito ausente | O workflow **verifica** namespace e Secret antes de aplicar, e falha com mensagem clara |
+| Risco                                   | Mitigação                                                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Segredo exposto em log                  | Mascaramento automático do Actions; nenhum `echo` de variável sensível; verificação no CI de que não há Secret real versionado |
+| Workflow com permissão excessiva        | `permissions` declarado explicitamente por workflow, com o mínimo necessário                                                   |
+| Imagem vulnerável publicada             | Trivy roda **antes** do push, sobre a imagem carregada no daemon local                                                         |
+| Deploy com credencial de cluster no CI  | ServiceAccount restrita ao namespace `loja-veloz`; Environment `staging` com revisor obrigatório                               |
+| Action de terceiro comprometida         | Todas fixadas por versão maior (`@v4`, `@v6`); fixar por SHA seria mais rigoroso e está registrado como melhoria               |
+| Deploy falhar por pré-requisito ausente | O workflow **verifica** namespace e Secret antes de aplicar, e falha com mensagem clara                                        |
 
 ## Decisão sobre o Trivy: publicar, não bloquear
 

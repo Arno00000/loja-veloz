@@ -8,17 +8,17 @@ O GitHub renderiza Mermaid nativamente em arquivos Markdown.
 
 ## Onde está cada um
 
-| # | Diagrama | Tipo | Arquivo |
-|---|---|---|---|
-| 1 | Arquitetura geral | `graph TB` | [`architecture.md` §2](../architecture.md) |
-| 2 | Fluxo de criação do pedido | `sequenceDiagram` | [`architecture.md` §4](../architecture.md) |
-| 3 | Estados do pedido | `stateDiagram-v2` | [`architecture.md` §5](../architecture.md) |
-| 4 | Topologia RabbitMQ | `graph LR` | [`architecture.md` §6](../architecture.md) |
-| 5 | Modelo de dados | `erDiagram` | [`architecture.md` §7](../architecture.md) |
-| 6 | Observabilidade | `graph LR` | [`architecture.md` §8](../architecture.md) |
-| 7 | Pipeline CI/CD | `graph LR` | abaixo |
-| 8 | Kubernetes | `graph TB` | abaixo |
-| 9 | AWS com Terraform | `graph TB` | abaixo |
+| #   | Diagrama                   | Tipo              | Arquivo                                    |
+| --- | -------------------------- | ----------------- | ------------------------------------------ |
+| 1   | Arquitetura geral          | `graph TB`        | [`architecture.md` §2](../architecture.md) |
+| 2   | Fluxo de criação do pedido | `sequenceDiagram` | [`architecture.md` §4](../architecture.md) |
+| 3   | Estados do pedido          | `stateDiagram-v2` | [`architecture.md` §5](../architecture.md) |
+| 4   | Topologia RabbitMQ         | `graph LR`        | [`architecture.md` §6](../architecture.md) |
+| 5   | Modelo de dados            | `erDiagram`       | [`architecture.md` §7](../architecture.md) |
+| 6   | Observabilidade            | `graph LR`        | [`architecture.md` §8](../architecture.md) |
+| 7   | Pipeline CI/CD             | `graph LR`        | abaixo                                     |
+| 8   | Kubernetes                 | `graph TB`        | abaixo                                     |
+| 9   | AWS com Terraform          | `graph TB`        | abaixo                                     |
 
 ---
 

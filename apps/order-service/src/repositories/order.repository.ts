@@ -1,8 +1,4 @@
-import {
-  canTransition,
-  ORDER_STATUS,
-  type OrderStatus,
-} from '@loja-veloz/shared-types';
+import { canTransition, ORDER_STATUS, type OrderStatus } from '@loja-veloz/shared-types';
 import { PG_UNIQUE_VIOLATION } from '@loja-veloz/messaging';
 import type { PrismaClient } from '../db/prisma';
 

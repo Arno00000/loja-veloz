@@ -17,8 +17,6 @@ const orderConfigSchema = baseConfigSchema
 
 export type OrderServiceConfig = z.infer<typeof orderConfigSchema>;
 
-export function loadOrderServiceConfig(
-  env: NodeJS.ProcessEnv = process.env
-): OrderServiceConfig {
+export function loadOrderServiceConfig(env: NodeJS.ProcessEnv = process.env): OrderServiceConfig {
   return loadConfig(orderConfigSchema, env, 'order-service');
 }

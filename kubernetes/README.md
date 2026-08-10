@@ -19,13 +19,13 @@ instalação manual, tornaria a atualização impossível.
 
 ## Pré-requisitos
 
-| Componente | Necessário para | Sem ele |
-|---|---|---|
-| Metrics Server | HPA | HPA fica em `<unknown>` e nunca escala |
-| NGINX Ingress Controller | Ingress | Ingress criado sem `ADDRESS`, inacessível |
-| CNI com NetworkPolicy | NetworkPolicies | Políticas aceitas e **silenciosamente ignoradas** |
-| Secret `app-secrets` | staging/produção | Pods em `CreateContainerConfigError` |
-| Acesso ao GHCR | staging/produção | `ImagePullBackOff` |
+| Componente               | Necessário para  | Sem ele                                           |
+| ------------------------ | ---------------- | ------------------------------------------------- |
+| Metrics Server           | HPA              | HPA fica em `<unknown>` e nunca escala            |
+| NGINX Ingress Controller | Ingress          | Ingress criado sem `ADDRESS`, inacessível         |
+| CNI com NetworkPolicy    | NetworkPolicies  | Políticas aceitas e **silenciosamente ignoradas** |
+| Secret `app-secrets`     | staging/produção | Pods em `CreateContainerConfigError`              |
+| Acesso ao GHCR           | staging/produção | `ImagePullBackOff`                                |
 
 Verificar se o CNI aplica NetworkPolicy — o CNI padrão do kind e do Docker
 Desktop **não aplica**:
@@ -180,7 +180,7 @@ kubectl rollout undo deployment/order-service -n loja-veloz --to-revision=3
 incluiu uma migration destrutiva, voltar a imagem anterior não desfaz a
 mudança de schema — e a versão antiga pode nem funcionar contra o schema novo.
 Por isso migrations devem ser sempre compatíveis com a versão anterior
-(*expand and contract*): primeiro adiciona coluna, depois o código passa a
+(_expand and contract_): primeiro adiciona coluna, depois o código passa a
 usá-la, e só num release seguinte a coluna antiga é removida.
 
 ### Canary — o que seria necessário

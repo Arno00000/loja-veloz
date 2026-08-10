@@ -133,18 +133,18 @@ no máximo, validado por inspeção.** Ver `docs/practical-report.md`.
 
 ### 2.1 Segurança — prioridade máxima
 
-| Melhoria | Resolve | Esforço |
-|---|---|---|
-| **OAuth 2.0 + OpenID Connect** | 1.7, AM-04, AM-14 | Alto |
-| **Expiração de reserva de estoque** | 1.8, AM-03 | Baixo |
-| **External Secrets Operator** + AWS Secrets Manager | AM-08 | Médio |
-| **Sealed Secrets** ou **SOPS** | Versionar segredo com segurança em GitOps | Baixo |
-| **mTLS** via service mesh | AM-06 | Alto |
-| `sslmode=require` e AMQPS | AM-06 parcialmente, com esforço baixo | Baixo |
-| **gitleaks** no pipeline | AM-07 | Baixo |
-| **SBOM** (Syft) e **Cosign** | AM-09 | Médio |
-| **OPA Gatekeeper** ou **Kyverno** | Política de admissão | Médio |
-| **AWS WAF + Shield** | AM-02 | Médio |
+| Melhoria                                            | Resolve                                   | Esforço |
+| --------------------------------------------------- | ----------------------------------------- | ------- |
+| **OAuth 2.0 + OpenID Connect**                      | 1.7, AM-04, AM-14                         | Alto    |
+| **Expiração de reserva de estoque**                 | 1.8, AM-03                                | Baixo   |
+| **External Secrets Operator** + AWS Secrets Manager | AM-08                                     | Médio   |
+| **Sealed Secrets** ou **SOPS**                      | Versionar segredo com segurança em GitOps | Baixo   |
+| **mTLS** via service mesh                           | AM-06                                     | Alto    |
+| `sslmode=require` e AMQPS                           | AM-06 parcialmente, com esforço baixo     | Baixo   |
+| **gitleaks** no pipeline                            | AM-07                                     | Baixo   |
+| **SBOM** (Syft) e **Cosign**                        | AM-09                                     | Médio   |
+| **OPA Gatekeeper** ou **Kyverno**                   | Política de admissão                      | Médio   |
+| **AWS WAF + Shield**                                | AM-02                                     | Médio   |
 
 ### 2.2 Confiabilidade
 
@@ -171,20 +171,20 @@ resolve 1.4.
 
 ### 2.3 Escala e deploy
 
-| Melhoria | Resolve |
-|---|---|
-| **KEDA** por profundidade de fila | Métrica de escala correta para consumidores (ADR-012) |
-| **Argo CD** | Deploy no modelo pull; cluster deixa de aceitar credencial externa |
-| **Argo Rollouts** ou **Flagger** | Canary ponderado real (ADR-006) |
-| **Cluster Autoscaler** ou **Karpenter** | Escala de nós |
-| **k6** | Teste de carga — resolve 1.11 e permite calibrar tudo que hoje é estimativa |
+| Melhoria                                | Resolve                                                                     |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| **KEDA** por profundidade de fila       | Métrica de escala correta para consumidores (ADR-012)                       |
+| **Argo CD**                             | Deploy no modelo pull; cluster deixa de aceitar credencial externa          |
+| **Argo Rollouts** ou **Flagger**        | Canary ponderado real (ADR-006)                                             |
+| **Cluster Autoscaler** ou **Karpenter** | Escala de nós                                                               |
+| **k6**                                  | Teste de carga — resolve 1.11 e permite calibrar tudo que hoje é estimativa |
 
 ### 2.4 Observabilidade
 
 - **Alertmanager** com roteamento real
 - **SLO e error budget** formais
 - **Grafana Tempo** no lugar do Jaeger em memória
-- Amostragem por cauda (*tail-based*): amostrar 100% dos traces com erro e uma
+- Amostragem por cauda (_tail-based_): amostrar 100% dos traces com erro e uma
   fração dos bem-sucedidos
 - **Exemplars**: ligar um ponto de histograma diretamente ao trace daquela
   requisição

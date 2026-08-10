@@ -78,10 +78,13 @@ describe('2. Fluxo de sucesso: PENDING -> STOCK_RESERVED -> CONFIRMED', () => {
     const before = await get<InventoryResponse>(`/api/inventory/${SKU_OK}`);
     const disponivelAntes = before.body.availableQuantity;
 
-    const created = await post<OrderResponse>('/api/orders', orderBody(CLIENTE_OK, [
-      { sku: SKU_OK, quantity: 2 },
-      { sku: SKU_OK_2, quantity: 1 },
-    ]));
+    const created = await post<OrderResponse>(
+      '/api/orders',
+      orderBody(CLIENTE_OK, [
+        { sku: SKU_OK, quantity: 2 },
+        { sku: SKU_OK_2, quantity: 1 },
+      ])
+    );
 
     expect(created.status).toBe(201);
     expect(created.body.status).toBe('PENDING');
@@ -162,10 +165,13 @@ describe('3. Falha de estoque: PENDING -> STOCK_FAILED', () => {
   it('reserva é tudo-ou-nada: item indisponível não consome os demais', async () => {
     const before = await get<InventoryResponse>(`/api/inventory/${SKU_OK}`);
 
-    const created = await post<OrderResponse>('/api/orders', orderBody(CLIENTE_OK, [
-      { sku: SKU_OK, quantity: 1 },
-      { sku: SKU_SEM_ESTOQUE, quantity: 1 },
-    ]));
+    const created = await post<OrderResponse>(
+      '/api/orders',
+      orderBody(CLIENTE_OK, [
+        { sku: SKU_OK, quantity: 1 },
+        { sku: SKU_SEM_ESTOQUE, quantity: 1 },
+      ])
+    );
     await waitForOrderStatus(created.body.id, 'STOCK_FAILED');
 
     const after = await get<InventoryResponse>(`/api/inventory/${SKU_OK}`);
@@ -229,8 +235,14 @@ describe('5. Validação e erros', () => {
   it.each([
     ['sem customerId', { items: [{ sku: SKU_OK, quantity: 1, unitPrice: 10 }] }],
     ['sem itens', { customerId: CLIENTE_OK, items: [] }],
-    ['quantidade zero', { customerId: CLIENTE_OK, items: [{ sku: SKU_OK, quantity: 0, unitPrice: 10 }] }],
-    ['preço negativo', { customerId: CLIENTE_OK, items: [{ sku: SKU_OK, quantity: 1, unitPrice: -1 }] }],
+    [
+      'quantidade zero',
+      { customerId: CLIENTE_OK, items: [{ sku: SKU_OK, quantity: 0, unitPrice: 10 }] },
+    ],
+    [
+      'preço negativo',
+      { customerId: CLIENTE_OK, items: [{ sku: SKU_OK, quantity: 1, unitPrice: -1 }] },
+    ],
   ])('rejeita payload inválido: %s', async (_label, body) => {
     const response = await post('/api/orders', body);
     expect(response.status).toBe(400);
@@ -262,9 +274,10 @@ describe('6. Idempotência sob concorrência', () => {
     // SKU-ESTOQUE-BAIXO tem saldo 2 no seed. Cinco pedidos de 1 unidade
     // disparados juntos: no máximo 2 podem ser confirmados.
     const requests = Array.from({ length: 5 }, () =>
-      post<OrderResponse>('/api/orders', orderBody(CLIENTE_OK, [
-        { sku: 'SKU-ESTOQUE-BAIXO', quantity: 1 },
-      ]))
+      post<OrderResponse>(
+        '/api/orders',
+        orderBody(CLIENTE_OK, [{ sku: 'SKU-ESTOQUE-BAIXO', quantity: 1 }])
+      )
     );
 
     const created = await Promise.all(requests);

@@ -13,17 +13,17 @@ controles é propaganda, não análise.
 
 ## 1. Ativos
 
-| # | Ativo | Por que importa | Impacto se comprometido |
-|---|---|---|---|
-| A1 | Dados de pedido (`customerId`, itens, valor) | Dado pessoal indireto e informação comercial | Alto — exposição de comportamento de compra |
-| A2 | Saldo de estoque | Base da decisão de venda | Alto — venda a descoberto ou negação indevida |
-| A3 | Registros de pagamento | Valor, status, referência externa | Alto — embora **não haja dado de cartão** |
-| A4 | Credenciais de banco e broker | Acesso total aos dados | **Crítico** |
-| A5 | Chave de administração do estoque | Permite alterar saldo | Médio — desligada em produção |
-| A6 | Imagens de contêiner no GHCR | Cadeia de suprimento | **Crítico** — imagem adulterada executa código arbitrário |
-| A7 | Estado do Terraform | Contém a senha do RDS em texto claro | **Crítico** |
-| A8 | Disponibilidade da plataforma | Receita durante a campanha | Alto |
-| A9 | Telemetria (logs, traces, métricas) | Pode conter dado sensível se mal filtrada | Médio |
+| #   | Ativo                                        | Por que importa                              | Impacto se comprometido                                   |
+| --- | -------------------------------------------- | -------------------------------------------- | --------------------------------------------------------- |
+| A1  | Dados de pedido (`customerId`, itens, valor) | Dado pessoal indireto e informação comercial | Alto — exposição de comportamento de compra               |
+| A2  | Saldo de estoque                             | Base da decisão de venda                     | Alto — venda a descoberto ou negação indevida             |
+| A3  | Registros de pagamento                       | Valor, status, referência externa            | Alto — embora **não haja dado de cartão**                 |
+| A4  | Credenciais de banco e broker                | Acesso total aos dados                       | **Crítico**                                               |
+| A5  | Chave de administração do estoque            | Permite alterar saldo                        | Médio — desligada em produção                             |
+| A6  | Imagens de contêiner no GHCR                 | Cadeia de suprimento                         | **Crítico** — imagem adulterada executa código arbitrário |
+| A7  | Estado do Terraform                          | Contém a senha do RDS em texto claro         | **Crítico**                                               |
+| A8  | Disponibilidade da plataforma                | Receita durante a campanha                   | Alto                                                      |
+| A9  | Telemetria (logs, traces, métricas)          | Pode conter dado sensível se mal filtrada    | Médio                                                     |
 
 **Observação relevante:** o sistema **não armazena número de cartão, CVV nem
 titular** em lugar nenhum. O simulador de pagamento não recebe esses dados. Isso
@@ -32,28 +32,28 @@ sorte.
 
 ## 2. Atores
 
-| Ator | Motivação | Capacidade |
-|---|---|---|
-| T1 — Atacante externo anônimo | Fraude, indisponibilidade, exfiltração | Só alcança o Ingress e o Gateway |
-| T2 — Cliente legítimo mal-intencionado | Comprar abaixo do preço, esgotar estoque de concorrente | Requisições válidas em volume |
-| T3 — Insider com acesso ao cluster | Exfiltração, sabotagem | Alta, se o RBAC for permissivo |
-| T4 — Atacante na cadeia de suprimento | Código malicioso via dependência ou action | Alta e difícil de detectar |
-| T5 — Desenvolvedor descuidado | Nenhuma; erro honesto | Commitar segredo, afrouxar política |
-| T6 — Atacante com acesso à rede do cluster | Interceptação de tráfego interno | Média |
+| Ator                                       | Motivação                                               | Capacidade                          |
+| ------------------------------------------ | ------------------------------------------------------- | ----------------------------------- |
+| T1 — Atacante externo anônimo              | Fraude, indisponibilidade, exfiltração                  | Só alcança o Ingress e o Gateway    |
+| T2 — Cliente legítimo mal-intencionado     | Comprar abaixo do preço, esgotar estoque de concorrente | Requisições válidas em volume       |
+| T3 — Insider com acesso ao cluster         | Exfiltração, sabotagem                                  | Alta, se o RBAC for permissivo      |
+| T4 — Atacante na cadeia de suprimento      | Código malicioso via dependência ou action              | Alta e difícil de detectar          |
+| T5 — Desenvolvedor descuidado              | Nenhuma; erro honesto                                   | Commitar segredo, afrouxar política |
+| T6 — Atacante com acesso à rede do cluster | Interceptação de tráfego interno                        | Média                               |
 
 ## 3. Superfícies de ataque
 
-| # | Superfície | Exposição |
-|---|---|---|
-| S1 | Ingress e API Gateway | **Pública** |
-| S2 | Serviços de backend (3001–3003) | Interna; NetworkPolicy só permite o Gateway |
-| S3 | PostgreSQL (5432) | Interna; sub-rede privada em nuvem |
-| S4 | RabbitMQ (5672 e 15672) | Interna; só a UI é publicada localmente |
-| S5 | Interfaces de observabilidade | Locais; **não expostas** em nuvem |
-| S6 | Pipeline de CI/CD | GitHub; controlado por permissão de repositório |
-| S7 | Registro GHCR | Público ou privado, conforme o repositório |
-| S8 | API do Kubernetes | Pública em staging; restrita por CIDR em produção |
-| S9 | Socket do Docker montado no Alloy | **Local apenas** |
+| #   | Superfície                        | Exposição                                         |
+| --- | --------------------------------- | ------------------------------------------------- |
+| S1  | Ingress e API Gateway             | **Pública**                                       |
+| S2  | Serviços de backend (3001–3003)   | Interna; NetworkPolicy só permite o Gateway       |
+| S3  | PostgreSQL (5432)                 | Interna; sub-rede privada em nuvem                |
+| S4  | RabbitMQ (5672 e 15672)           | Interna; só a UI é publicada localmente           |
+| S5  | Interfaces de observabilidade     | Locais; **não expostas** em nuvem                 |
+| S6  | Pipeline de CI/CD                 | GitHub; controlado por permissão de repositório   |
+| S7  | Registro GHCR                     | Público ou privado, conforme o repositório        |
+| S8  | API do Kubernetes                 | Pública em staging; restrita por CIDR em produção |
+| S9  | Socket do Docker montado no Alloy | **Local apenas**                                  |
 
 ---
 
@@ -302,12 +302,12 @@ não é provisionado por Terraform** e permanece sem HA.
 
 ## 5. Resumo do risco residual
 
-| Nível | Ameaças | Observação |
-|---|---|---|
-| **Crítico** | AM-04 (sem autenticação) | Bloqueador para uso real |
-| **Alto** | AM-03, AM-14, AM-15 (local) | AM-03 e AM-14 dependem de AM-04 |
-| **Médio** | AM-02, AM-05, AM-06, AM-07, AM-08, AM-09, AM-12 | |
-| **Baixo** | AM-01, AM-10, AM-11, AM-13 | |
+| Nível       | Ameaças                                         | Observação                      |
+| ----------- | ----------------------------------------------- | ------------------------------- |
+| **Crítico** | AM-04 (sem autenticação)                        | Bloqueador para uso real        |
+| **Alto**    | AM-03, AM-14, AM-15 (local)                     | AM-03 e AM-14 dependem de AM-04 |
+| **Médio**   | AM-02, AM-05, AM-06, AM-07, AM-08, AM-09, AM-12 |                                 |
+| **Baixo**   | AM-01, AM-10, AM-11, AM-13                      |                                 |
 
 ## 6. Ordem de correção recomendada
 

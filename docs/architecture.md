@@ -280,12 +280,12 @@ gravada na mesma transação que aplica o efeito de negócio.
 
 ```typescript
 interface DomainEvent<TPayload> {
-  eventId: string;        // chave de idempotência
-  eventType: string;      // idêntico à routing key
-  eventVersion: number;   // começa em 1
-  occurredAt: string;     // ISO 8601 com offset
-  correlationId: string;  // jornada de negócio
-  causationId?: string;   // eventId que originou este
+  eventId: string; // chave de idempotência
+  eventType: string; // idêntico à routing key
+  eventVersion: number; // começa em 1
+  occurredAt: string; // ISO 8601 com offset
+  correlationId: string; // jornada de negócio
+  causationId?: string; // eventId que originou este
   producer: string;
   payload: TPayload;
 }
@@ -402,14 +402,14 @@ sem limite. Essa informação vive em logs e traces.
 
 ## 9. Ambiente local e Kubernetes
 
-| Aspecto | Docker Compose | Kubernetes |
-|---|---|---|
-| Orquestração | `docker-compose.yml` | Kustomize, três overlays |
-| Réplicas | 1 por serviço | 1 (dev) / 2 (staging) / 3 (prod) |
-| Banco e broker | contêineres locais | RDS + Amazon MQ (recomendado) |
-| Coleta de logs | Alloy via socket do Docker | Alloy via API do Kubernetes |
-| Rede | bridge | NetworkPolicy com negação por padrão |
-| Escala | manual | HPA v2 por CPU |
+| Aspecto        | Docker Compose             | Kubernetes                           |
+| -------------- | -------------------------- | ------------------------------------ |
+| Orquestração   | `docker-compose.yml`       | Kustomize, três overlays             |
+| Réplicas       | 1 por serviço              | 1 (dev) / 2 (staging) / 3 (prod)     |
+| Banco e broker | contêineres locais         | RDS + Amazon MQ (recomendado)        |
+| Coleta de logs | Alloy via socket do Docker | Alloy via API do Kubernetes          |
+| Rede           | bridge                     | NetworkPolicy com negação por padrão |
+| Escala         | manual                     | HPA v2 por CPU                       |
 
 O contexto de build das imagens é **sempre a raiz do monorepo**, porque o build
 depende do `package-lock.json` e dos pacotes em `packages/`.

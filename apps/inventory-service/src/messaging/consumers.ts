@@ -20,9 +20,7 @@ export interface RegisterConsumersOptions {
   idempotencyStore: IdempotencyStore;
 }
 
-export async function registerInventoryConsumers(
-  options: RegisterConsumersOptions
-): Promise<void> {
+export async function registerInventoryConsumers(options: RegisterConsumersOptions): Promise<void> {
   const { client, service, logger, maxRetries, idempotencyStore } = options;
 
   await registerEventConsumer({

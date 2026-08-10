@@ -20,25 +20,25 @@ A métrica ideal para escalar cada serviço é diferente:
 **HPA v2 com utilização de CPU** para os quatro serviços, com limites
 distintos:
 
-| Serviço | min | max | alvo |
-|---|---|---|---|
-| api-gateway | 2 (3 em prod) | 10 (20) | 60% |
-| order-service | 2 (3) | 8 (12) | 70% |
-| inventory-service | 2 (3) | 8 (12) | 70% |
-| payment-service | 2 | 6 | 70% |
+| Serviço           | min           | max     | alvo |
+| ----------------- | ------------- | ------- | ---- |
+| api-gateway       | 2 (3 em prod) | 10 (20) | 60%  |
+| order-service     | 2 (3)         | 8 (12)  | 70%  |
+| inventory-service | 2 (3)         | 8 (12)  | 70%  |
+| payment-service   | 2             | 6       | 70%  |
 
 Com `behavior` assimétrico: janela de estabilização de 30–60 s na subida e de
 **300 s na descida**.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não agora |
-|---|---|
-| **Sem autoscaling** | Não atende ao requisito de escalar sob demanda |
-| **KEDA por profundidade de fila** | **É a solução tecnicamente correta** para os consumidores. Descartado no MVP porque exige instalar e operar mais um controlador, e porque CPU já demonstra o mecanismo. Registrado como evolução prioritária |
-| **HPA por métrica customizada do Prometheus** | Exigiria Prometheus Adapter, mais uma peça, e o mesmo esforço do KEDA com menos benefício |
-| **VPA** | Ajusta `requests` verticalmente. **Não pode** conviver com HPA sobre o mesmo recurso — ver Riscos |
-| **Cluster Autoscaler apenas** | Escala nós, não pods. Complementar, não alternativo |
+| Alternativa                                   | Por que não agora                                                                                                                                                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Sem autoscaling**                           | Não atende ao requisito de escalar sob demanda                                                                                                                                                               |
+| **KEDA por profundidade de fila**             | **É a solução tecnicamente correta** para os consumidores. Descartado no MVP porque exige instalar e operar mais um controlador, e porque CPU já demonstra o mecanismo. Registrado como evolução prioritária |
+| **HPA por métrica customizada do Prometheus** | Exigiria Prometheus Adapter, mais uma peça, e o mesmo esforço do KEDA com menos benefício                                                                                                                    |
+| **VPA**                                       | Ajusta `requests` verticalmente. **Não pode** conviver com HPA sobre o mesmo recurso — ver Riscos                                                                                                            |
+| **Cluster Autoscaler apenas**                 | Escala nós, não pods. Complementar, não alternativo                                                                                                                                                          |
 
 ## Consequências positivas
 
@@ -65,14 +65,14 @@ Com `behavior` assimétrico: janela de estabilização de 30–60 s na subida e 
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Deployment sem `requests.cpu` torna o HPA inoperante | Todos declaram; `LimitRange` define default como rede de segurança |
-| Esgotar conexões do PostgreSQL ao escalar | `connection_limit=10` na URL; `maxReplicas` calibrado por esse teto |
-| Oscilação (subir e descer em ciclo) | `stabilizationWindowSeconds: 300` na descida |
-| Escalar sem capacidade de nó | `ResourceQuota` no namespace; Cluster Autoscaler é evolução |
-| **HPA e VPA no mesmo recurso** | **Proibido.** O VPA altera `requests`; o HPA calcula percentual sobre esse valor em movimento. O resultado é oscilação. Este projeto usa apenas HPA, e a proibição está registrada em `hpa.yaml` |
-| Duplicidade ao escalar consumidores | Idempotência por `processed_events`: **pré-requisito da escala**, não detalhe |
+| Risco                                                | Mitigação                                                                                                                                                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Deployment sem `requests.cpu` torna o HPA inoperante | Todos declaram; `LimitRange` define default como rede de segurança                                                                                                                               |
+| Esgotar conexões do PostgreSQL ao escalar            | `connection_limit=10` na URL; `maxReplicas` calibrado por esse teto                                                                                                                              |
+| Oscilação (subir e descer em ciclo)                  | `stabilizationWindowSeconds: 300` na descida                                                                                                                                                     |
+| Escalar sem capacidade de nó                         | `ResourceQuota` no namespace; Cluster Autoscaler é evolução                                                                                                                                      |
+| **HPA e VPA no mesmo recurso**                       | **Proibido.** O VPA altera `requests`; o HPA calcula percentual sobre esse valor em movimento. O resultado é oscilação. Este projeto usa apenas HPA, e a proibição está registrada em `hpa.yaml` |
+| Duplicidade ao escalar consumidores                  | Idempotência por `processed_events`: **pré-requisito da escala**, não detalhe                                                                                                                    |
 
 ## Critérios de revisão
 

@@ -23,12 +23,12 @@ derivado por overlay.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Docker Compose em produção** | Sem escala horizontal automática, sem reagendamento em outro nó, sem rolling update com controle de disponibilidade, sem gestão de segredo. Serve para desenvolvimento — e é exatamente para isso que é usado aqui |
-| **Docker Swarm** | Mais simples e suficiente para o caso, mas com ecossistema estagnado. Investir aprendizado nele em 2026 tem retorno duvidoso |
-| **AWS ECS Fargate** | Solução legítima, menos complexa que EKS e sem nós para gerenciar. Descartado por amarrar ao provedor e por não rodar no ambiente local — o que quebraria a paridade entre ambientes |
-| **PaaS (Heroku, Render, Fly.io)** | Resolveria deploy e escala com uma fração do esforço. Descartado porque o objetivo declarado inclui demonstrar orquestração, e porque a Loja Veloz precisa de controle sobre rede e política de segurança |
+| Alternativa                       | Por que não                                                                                                                                                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Docker Compose em produção**    | Sem escala horizontal automática, sem reagendamento em outro nó, sem rolling update com controle de disponibilidade, sem gestão de segredo. Serve para desenvolvimento — e é exatamente para isso que é usado aqui |
+| **Docker Swarm**                  | Mais simples e suficiente para o caso, mas com ecossistema estagnado. Investir aprendizado nele em 2026 tem retorno duvidoso                                                                                       |
+| **AWS ECS Fargate**               | Solução legítima, menos complexa que EKS e sem nós para gerenciar. Descartado por amarrar ao provedor e por não rodar no ambiente local — o que quebraria a paridade entre ambientes                               |
+| **PaaS (Heroku, Render, Fly.io)** | Resolveria deploy e escala com uma fração do esforço. Descartado porque o objetivo declarado inclui demonstrar orquestração, e porque a Loja Veloz precisa de controle sobre rede e política de segurança          |
 
 ## Consequências positivas
 
@@ -54,13 +54,13 @@ derivado por overlay.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| NetworkPolicy silenciosamente ignorada por CNI sem suporte | Aviso explícito em `kubernetes/README.md` com comando de verificação |
-| HPA parado por ausência de Metrics Server | Documentado como pré-requisito; sintoma descrito em `docs/troubleshooting.md` |
-| Configuração de segurança relaxada "para o pod subir" | Regra declarada: nenhum controle é desligado em serviço da aplicação. As duas exceções (Postgres e RabbitMQ locais) estão marcadas no arquivo |
-| Complexidade acima da capacidade da equipe | Runbook e troubleshooting com sintoma, diagnóstico e correção |
-| Custo inesperado na AWS | Avisos de custo em `terraform/README.md`; NAT desligado por padrão |
+| Risco                                                      | Mitigação                                                                                                                                     |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| NetworkPolicy silenciosamente ignorada por CNI sem suporte | Aviso explícito em `kubernetes/README.md` com comando de verificação                                                                          |
+| HPA parado por ausência de Metrics Server                  | Documentado como pré-requisito; sintoma descrito em `docs/troubleshooting.md`                                                                 |
+| Configuração de segurança relaxada "para o pod subir"      | Regra declarada: nenhum controle é desligado em serviço da aplicação. As duas exceções (Postgres e RabbitMQ locais) estão marcadas no arquivo |
+| Complexidade acima da capacidade da equipe                 | Runbook e troubleshooting com sintoma, diagnóstico e correção                                                                                 |
+| Custo inesperado na AWS                                    | Avisos de custo em `terraform/README.md`; NAT desligado por padrão                                                                            |
 
 ## Critérios de revisão
 

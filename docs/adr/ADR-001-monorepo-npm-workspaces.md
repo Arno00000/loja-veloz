@@ -30,12 +30,12 @@ produtores e pelos consumidores. Um payload fora do contrato quebra o
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
+| Alternativa                               | Por que não                                                                                                                                                                                                                                    |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Polirepo** (um repositório por serviço) | Alterar um contrato exigiria PR coordenado em 3 repositórios, publicação de pacote versionado e atualização de dependência em cada um. Para uma equipe pequena com prazo de 4 semanas, o custo de coordenação supera o benefício de isolamento |
-| **Nx ou Turborepo** | Trazem cache distribuído e grafo de tarefas — valiosos em repositórios grandes. Com 8 workspaces, o ganho é marginal e o custo é mais uma ferramenta para instalar, configurar e ensinar |
-| **pnpm workspaces** | Tecnicamente superior em uso de disco e rigor de resolução. Descartado por decisão explícita de padronizar npm: misturar gerenciadores é fonte clássica de lockfile inconsistente |
-| **Código duplicado** | Diverge sozinho. Não é alternativa séria |
+| **Nx ou Turborepo**                       | Trazem cache distribuído e grafo de tarefas — valiosos em repositórios grandes. Com 8 workspaces, o ganho é marginal e o custo é mais uma ferramenta para instalar, configurar e ensinar                                                       |
+| **pnpm workspaces**                       | Tecnicamente superior em uso de disco e rigor de resolução. Descartado por decisão explícita de padronizar npm: misturar gerenciadores é fonte clássica de lockfile inconsistente                                                              |
+| **Código duplicado**                      | Diverge sozinho. Não é alternativa séria                                                                                                                                                                                                       |
 
 ## Consequências positivas
 
@@ -58,11 +58,11 @@ produtores e pelos consumidores. Um payload fora do contrato quebra o
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Acoplamento acidental entre serviços por um import indevido | Regra de revisão: nenhum `apps/X` importa de `apps/Y`. Não há verificação automatizada — é uma lacuna conhecida |
-| Build lento conforme o repositório cresce | Cache do npm no CI por lockfile; cache de camadas do Docker por escopo de serviço |
-| `package-lock.json` como ponto de conflito frequente em merge | Resolver sempre regenerando com `npm install`, nunca editando à mão |
+| Risco                                                         | Mitigação                                                                                                       |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Acoplamento acidental entre serviços por um import indevido   | Regra de revisão: nenhum `apps/X` importa de `apps/Y`. Não há verificação automatizada — é uma lacuna conhecida |
+| Build lento conforme o repositório cresce                     | Cache do npm no CI por lockfile; cache de camadas do Docker por escopo de serviço                               |
+| `package-lock.json` como ponto de conflito frequente em merge | Resolver sempre regenerando com `npm install`, nunca editando à mão                                             |
 
 ## Critérios de revisão
 

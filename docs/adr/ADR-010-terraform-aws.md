@@ -26,12 +26,12 @@ Estado em backend S3 remoto, com criptografia, versionamento e bloqueio nativo.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Console da AWS** | Não é reproduzível nem revisável. É o problema, não a solução |
-| **AWS CloudFormation / CDK** | Nativos e bem integrados, mas exclusivos da AWS. Terraform mantém a possibilidade de outro provedor sem trocar de ferramenta |
-| **Pulumi** | IaC em linguagem de programação de verdade — atraente para quem já escreve TypeScript. Ecossistema e material de referência menores que os do Terraform |
-| **Ansible** | Ferramenta de configuração, não de provisionamento declarativo de recursos de nuvem |
+| Alternativa                                        | Por que não                                                                                                                                                                                                                             |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Console da AWS**                                 | Não é reproduzível nem revisável. É o problema, não a solução                                                                                                                                                                           |
+| **AWS CloudFormation / CDK**                       | Nativos e bem integrados, mas exclusivos da AWS. Terraform mantém a possibilidade de outro provedor sem trocar de ferramenta                                                                                                            |
+| **Pulumi**                                         | IaC em linguagem de programação de verdade — atraente para quem já escreve TypeScript. Ecossistema e material de referência menores que os do Terraform                                                                                 |
+| **Ansible**                                        | Ferramenta de configuração, não de provisionamento declarativo de recursos de nuvem                                                                                                                                                     |
 | **Módulos públicos** (`terraform-aws-modules/eks`) | Maduros e bem testados; usá-los seria defensável. Módulos próprios foram escolhidos por valor didático — o objetivo acadêmico inclui entender o que cada recurso faz, e um módulo público esconderia isso atrás de dezenas de variáveis |
 
 ## Consequências positivas
@@ -56,14 +56,14 @@ Estado em backend S3 remoto, com criptografia, versionamento e bloqueio nativo.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Custo inesperado | Avisos explícitos em `terraform/README.md`; NAT desligado por padrão em staging; SPOT e `db.t4g.micro`; VPC Endpoint S3 sem custo por hora |
-| Exclusão acidental de banco de produção | `deletion_protection = true` e `skip_final_snapshot = false` em produção |
-| Estado corrompido | Versionamento do bucket S3 permite recuperar a versão anterior |
-| Dois `apply` simultâneos | Bloqueio nativo do S3 (`use_lockfile`) |
-| Credencial da AWS vazada | Nenhuma chave no repositório; OIDC recomendado no GitHub Actions |
-| Módulo público mudando de comportamento | Não aplicável hoje; quando usados, versão fixada e origem oficial registrada |
+| Risco                                   | Mitigação                                                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Custo inesperado                        | Avisos explícitos em `terraform/README.md`; NAT desligado por padrão em staging; SPOT e `db.t4g.micro`; VPC Endpoint S3 sem custo por hora |
+| Exclusão acidental de banco de produção | `deletion_protection = true` e `skip_final_snapshot = false` em produção                                                                   |
+| Estado corrompido                       | Versionamento do bucket S3 permite recuperar a versão anterior                                                                             |
+| Dois `apply` simultâneos                | Bloqueio nativo do S3 (`use_lockfile`)                                                                                                     |
+| Credencial da AWS vazada                | Nenhuma chave no repositório; OIDC recomendado no GitHub Actions                                                                           |
+| Módulo público mudando de comportamento | Não aplicável hoje; quando usados, versão fixada e origem oficial registrada                                                               |
 
 ## O que este código NÃO cobre
 

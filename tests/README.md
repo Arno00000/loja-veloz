@@ -2,11 +2,11 @@
 
 ## Camadas
 
-| Camada | Onde | Roda contra | Quando |
-|---|---|---|---|
-| Unitário | `packages/*/src/__tests__`, `apps/*/src/__tests__` | dublês em memória | todo push e PR |
-| Integração | `tests/integration` | stack real do Compose | todo push e PR |
-| Smoke | `tests/smoke` | ambiente já implantado | após cada deploy |
+| Camada     | Onde                                               | Roda contra            | Quando           |
+| ---------- | -------------------------------------------------- | ---------------------- | ---------------- |
+| Unitário   | `packages/*/src/__tests__`, `apps/*/src/__tests__` | dublês em memória      | todo push e PR   |
+| Integração | `tests/integration`                                | stack real do Compose  | todo push e PR   |
+| Smoke      | `tests/smoke`                                      | ambiente já implantado | após cada deploy |
 
 A divisão segue um critério: **o que o teste precisa provar**.
 
@@ -23,10 +23,10 @@ Nenhum teste depende de aleatoriedade, de internet ou de serviço pago.
 
 Os cenários de falha são forçados por dados semeados, não por sorteio:
 
-| Cenário | Como é forçado |
-|---|---|
-| Falha de estoque | `SKU-SEM-ESTOQUE`, saldo 0 no seed |
-| Saldo insuficiente | `SKU-ESTOQUE-BAIXO`, saldo 2 no seed |
+| Cenário            | Como é forçado                              |
+| ------------------ | ------------------------------------------- |
+| Falha de estoque   | `SKU-SEM-ESTOQUE`, saldo 0 no seed          |
+| Saldo insuficiente | `SKU-ESTOQUE-BAIXO`, saldo 2 no seed        |
 | Falha de pagamento | `CUSTOMER-PAYMENT-FAIL`, recusa configurada |
 
 Aleatoriedade tornaria a suíte instável: um teste que falha uma vez a cada

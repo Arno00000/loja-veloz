@@ -90,11 +90,7 @@ export class InMemoryOrderRepository implements OrderRepository {
 }
 
 export interface RecordedPublication {
-  type:
-    | 'order.created'
-    | 'order.confirmed'
-    | 'order.failed'
-    | 'stock.release.requested';
+  type: 'order.created' | 'order.confirmed' | 'order.failed' | 'stock.release.requested';
   orderId: string;
   correlationId: string;
   reason?: string;

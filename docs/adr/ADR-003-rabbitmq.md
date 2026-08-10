@@ -32,13 +32,13 @@ cliente já está esperando.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **HTTP síncrono entre serviços** | Acopla disponibilidade: Pagamento fora do ar impediria criar pedido. Sob pico, falha em cascata |
-| **Apache Kafka** | Superior em throughput e em retenção de log de eventos. Descartado por complexidade operacional desproporcional: ZooKeeper/KRaft, partições, grupos de consumo e rebalanceamento são muito para 9 tipos de evento e 4 serviços. Kafka brilha em milhões de eventos por dia; aqui seria um cluster inteiro para operar sem necessidade |
-| **Redis Streams / Pub-Sub** | Pub-Sub simples não garante entrega. Streams garante, mas exige mais código de consumidor e o Redis não é primariamente um broker |
-| **Amazon SQS/SNS** | Gerenciado e robusto, mas amarra ao provedor e impede rodar tudo offline no ambiente local — requisito explícito do projeto |
-| **Transactional outbox desde o início** | Seria mais correto. Descartado porque implementá-lo pela metade (sem processo de relay confiável) é pior que assumir a limitação. Ver Riscos |
+| Alternativa                             | Por que não                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **HTTP síncrono entre serviços**        | Acopla disponibilidade: Pagamento fora do ar impediria criar pedido. Sob pico, falha em cascata                                                                                                                                                                                                                                       |
+| **Apache Kafka**                        | Superior em throughput e em retenção de log de eventos. Descartado por complexidade operacional desproporcional: ZooKeeper/KRaft, partições, grupos de consumo e rebalanceamento são muito para 9 tipos de evento e 4 serviços. Kafka brilha em milhões de eventos por dia; aqui seria um cluster inteiro para operar sem necessidade |
+| **Redis Streams / Pub-Sub**             | Pub-Sub simples não garante entrega. Streams garante, mas exige mais código de consumidor e o Redis não é primariamente um broker                                                                                                                                                                                                     |
+| **Amazon SQS/SNS**                      | Gerenciado e robusto, mas amarra ao provedor e impede rodar tudo offline no ambiente local — requisito explícito do projeto                                                                                                                                                                                                           |
+| **Transactional outbox desde o início** | Seria mais correto. Descartado porque implementá-lo pela metade (sem processo de relay confiável) é pior que assumir a limitação. Ver Riscos                                                                                                                                                                                          |
 
 ## Consequências positivas
 
@@ -62,14 +62,14 @@ cliente já está esperando.
 
 ## Riscos
 
-| Risco | Mitigação | Residual |
-|---|---|---|
-| Mensagem perdida entre commit no banco e publish | Nenhuma completa. É a **janela do outbox** | **Sim, assumido.** Pedido fica PENDING sem evento; visível na consulta e nas métricas. Ver `docs/limitations-and-roadmap.md` |
-| Duplicata processada duas vezes | `processed_events` com chave única, gravado na mesma transação do efeito | Baixo |
-| Retry infinito consumindo o broker | `RABBITMQ_MAX_RETRIES` com teto de 20 validado por schema; testado em `retry-policy.test.ts` | Nenhum |
-| Mensagem envenenada travando a fila | Payload que viola contrato vai direto para DLQ, sem retry | Baixo |
-| Broker como ponto único de falha | Reconexão com backoff exponencial; readiness segura o tráfego | **Sim**: RabbitMQ local sem HA |
-| DLQ crescendo sem ninguém olhar | Alerta `MensagensNaDLQ` dispara com qualquer mensagem em 10 min | Depende de o alerta ser roteado — não há Alertmanager configurado |
+| Risco                                            | Mitigação                                                                                    | Residual                                                                                                                     |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Mensagem perdida entre commit no banco e publish | Nenhuma completa. É a **janela do outbox**                                                   | **Sim, assumido.** Pedido fica PENDING sem evento; visível na consulta e nas métricas. Ver `docs/limitations-and-roadmap.md` |
+| Duplicata processada duas vezes                  | `processed_events` com chave única, gravado na mesma transação do efeito                     | Baixo                                                                                                                        |
+| Retry infinito consumindo o broker               | `RABBITMQ_MAX_RETRIES` com teto de 20 validado por schema; testado em `retry-policy.test.ts` | Nenhum                                                                                                                       |
+| Mensagem envenenada travando a fila              | Payload que viola contrato vai direto para DLQ, sem retry                                    | Baixo                                                                                                                        |
+| Broker como ponto único de falha                 | Reconexão com backoff exponencial; readiness segura o tráfego                                | **Sim**: RabbitMQ local sem HA                                                                                               |
+| DLQ crescendo sem ninguém olhar                  | Alerta `MensagensNaDLQ` dispara com qualquer mensagem em 10 min                              | Depende de o alerta ser roteado — não há Alertmanager configurado                                                            |
 
 ## Critérios de revisão
 

@@ -104,11 +104,7 @@ export function findQueueDefinition(name: string): QueueDefinition | undefined {
  * unitario com um duble, sem exigir um broker em execucao.
  */
 export interface TopologyChannel {
-  assertExchange(
-    exchange: string,
-    type: string,
-    options: { durable: boolean }
-  ): Promise<unknown>;
+  assertExchange(exchange: string, type: string, options: { durable: boolean }): Promise<unknown>;
   assertQueue(queue: string, options: Record<string, unknown>): Promise<unknown>;
   bindQueue(queue: string, source: string, pattern: string): Promise<unknown>;
 }

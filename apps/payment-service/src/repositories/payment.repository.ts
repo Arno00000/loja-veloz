@@ -25,8 +25,7 @@ export interface RecordPaymentData {
 }
 
 export type RecordPaymentResult =
-  | { outcome: 'recorded'; payment: PaymentRecord }
-  | { outcome: 'duplicate' };
+  { outcome: 'recorded'; payment: PaymentRecord } | { outcome: 'duplicate' };
 
 export interface PaymentRepository {
   findByOrderId(orderId: string): Promise<PaymentRecord | null>;

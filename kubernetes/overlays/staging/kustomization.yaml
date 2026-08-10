@@ -23,6 +23,7 @@ patches:
 
 configMapGenerator:
   - name: app-config
+    namespace: loja-veloz
     behavior: merge
     literals:
       - ENVIRONMENT=staging

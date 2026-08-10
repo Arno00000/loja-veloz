@@ -16,23 +16,23 @@ tentador concluir que o mesh é a resposta.
 **Não adotar service mesh no MVP.** As necessidades são atendidas por
 alternativas mais simples:
 
-| Necessidade | Solução adotada |
-|---|---|
-| Segmentação de rede | NetworkPolicy com negação por padrão |
-| Timeout entre serviços | `AbortSignal.timeout` no cliente do Gateway |
-| Retry | Política própria no consumidor, com DLQ e teto de tentativas |
-| Telemetria | OpenTelemetry na aplicação |
-| Rate limiting | `express-rate-limit` no Gateway + annotation no Ingress |
-| Criptografia em trânsito | TLS no Ingress; **tráfego interno em texto claro** |
+| Necessidade              | Solução adotada                                              |
+| ------------------------ | ------------------------------------------------------------ |
+| Segmentação de rede      | NetworkPolicy com negação por padrão                         |
+| Timeout entre serviços   | `AbortSignal.timeout` no cliente do Gateway                  |
+| Retry                    | Política própria no consumidor, com DLQ e teto de tentativas |
+| Telemetria               | OpenTelemetry na aplicação                                   |
+| Rate limiting            | `express-rate-limit` no Gateway + annotation no Ingress      |
+| Criptografia em trânsito | TLS no Ingress; **tráfego interno em texto claro**           |
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não agora |
-|---|---|
-| **Istio** | Plano de controle completo, sidecar por pod, CRDs próprios. Consumo de recurso e superfície operacional desproporcionais a 4 serviços em 4 semanas |
-| **Linkerd** | Significativamente mais leve e simples que Istio, e a escolha provável quando o mesh for adotado. Ainda assim, é um componente a mais para instalar, atualizar e diagnosticar |
-| **Cilium com service mesh** | Resolveria NetworkPolicy e mesh na mesma camada, sem sidecar. Interessante, mas exigiria trocar o CNI do cluster |
-| **Adotar mesh** | Rejeitado por custo/benefício, não por desconhecimento |
+| Alternativa                 | Por que não agora                                                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Istio**                   | Plano de controle completo, sidecar por pod, CRDs próprios. Consumo de recurso e superfície operacional desproporcionais a 4 serviços em 4 semanas                            |
+| **Linkerd**                 | Significativamente mais leve e simples que Istio, e a escolha provável quando o mesh for adotado. Ainda assim, é um componente a mais para instalar, atualizar e diagnosticar |
+| **Cilium com service mesh** | Resolveria NetworkPolicy e mesh na mesma camada, sem sidecar. Interessante, mas exigiria trocar o CNI do cluster                                                              |
+| **Adotar mesh**             | Rejeitado por custo/benefício, não por desconhecimento                                                                                                                        |
 
 ## Consequências positivas
 
@@ -58,11 +58,11 @@ alternativas mais simples:
 
 ## Riscos
 
-| Risco | Mitigação | Residual |
-|---|---|---|
-| Tráfego interno interceptado | NetworkPolicy restringe origem; cluster privado | **Sim, assumido.** Registrado em `docs/threat-model.md` |
-| Falha em cascata por serviço lento | Timeout de 5 s no Gateway; fluxo de negócio é assíncrono | Baixo — o desenho por evento já isola a maior parte |
-| Retry inconsistente entre clientes | Política centralizada em `packages/messaging` | Baixo |
+| Risco                              | Mitigação                                                | Residual                                                |
+| ---------------------------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| Tráfego interno interceptado       | NetworkPolicy restringe origem; cluster privado          | **Sim, assumido.** Registrado em `docs/threat-model.md` |
+| Falha em cascata por serviço lento | Timeout de 5 s no Gateway; fluxo de negócio é assíncrono | Baixo — o desenho por evento já isola a maior parte     |
+| Retry inconsistente entre clientes | Política centralizada em `packages/messaging`            | Baixo                                                   |
 
 ## Critérios de revisão
 

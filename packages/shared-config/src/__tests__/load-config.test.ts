@@ -40,9 +40,9 @@ describe('loadConfig', () => {
   });
 
   it('rejeita porta fora do intervalo valido', () => {
-    expect(() =>
-      loadConfig(baseConfigSchema, { SERVICE_NAME: 'x', PORT: '70000' }, 'x')
-    ).toThrow(ConfigurationError);
+    expect(() => loadConfig(baseConfigSchema, { SERVICE_NAME: 'x', PORT: '70000' }, 'x')).toThrow(
+      ConfigurationError
+    );
   });
 
   it('rejeita LOG_LEVEL desconhecido', () => {

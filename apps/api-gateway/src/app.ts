@@ -45,8 +45,7 @@ export interface CreateAppOptions {
 export function createApp(options: CreateAppOptions): Express {
   const { config, logger } = options;
   const upstream =
-    options.upstream ??
-    new UpstreamClient({ timeoutMs: config.UPSTREAM_TIMEOUT_MS, logger });
+    options.upstream ?? new UpstreamClient({ timeoutMs: config.UPSTREAM_TIMEOUT_MS, logger });
 
   const app = express();
 

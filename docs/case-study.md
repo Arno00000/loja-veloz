@@ -38,19 +38,19 @@ direta e útil.
 São **11 microsserviços que se comunicam por gRPC**, escritos em linguagens
 diferentes:
 
-| Serviço | Linguagem | Responsabilidade (conforme o README oficial) |
-|---|---|---|
-| `frontend` | Go | Servidor HTTP do site; gera IDs de sessão automaticamente, sem cadastro nem login |
-| `cartservice` | C# | Guarda os itens do carrinho no Redis |
-| `productcatalogservice` | Go | Lista, busca e devolve produtos a partir de um arquivo JSON |
-| `currencyservice` | Node.js | Converte valores entre moedas; é o serviço de maior QPS |
-| `paymentservice` | Node.js | Cobra o cartão informado (**simulado**) e devolve um ID de transação |
-| `shippingservice` | Go | Estima o custo de frete e envia os itens (**simulado**) |
-| `emailservice` | Python | Envia e-mail de confirmação (**simulado**) |
-| `checkoutservice` | Go | Recupera o carrinho, monta o pedido e **orquestra** pagamento, frete e notificação |
-| `recommendationservice` | Python | Recomenda produtos com base no carrinho |
-| `adservice` | Java | Devolve anúncios de texto por palavra de contexto |
-| `loadgenerator` | Python/Locust | Gera tráfego contínuo imitando fluxos reais de compra |
+| Serviço                 | Linguagem     | Responsabilidade (conforme o README oficial)                                       |
+| ----------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| `frontend`              | Go            | Servidor HTTP do site; gera IDs de sessão automaticamente, sem cadastro nem login  |
+| `cartservice`           | C#            | Guarda os itens do carrinho no Redis                                               |
+| `productcatalogservice` | Go            | Lista, busca e devolve produtos a partir de um arquivo JSON                        |
+| `currencyservice`       | Node.js       | Converte valores entre moedas; é o serviço de maior QPS                            |
+| `paymentservice`        | Node.js       | Cobra o cartão informado (**simulado**) e devolve um ID de transação               |
+| `shippingservice`       | Go            | Estima o custo de frete e envia os itens (**simulado**)                            |
+| `emailservice`          | Python        | Envia e-mail de confirmação (**simulado**)                                         |
+| `checkoutservice`       | Go            | Recupera o carrinho, monta o pedido e **orquestra** pagamento, frete e notificação |
+| `recommendationservice` | Python        | Recomenda produtos com base no carrinho                                            |
+| `adservice`             | Java          | Devolve anúncios de texto por palavra de contexto                                  |
+| `loadgenerator`         | Python/Locust | Gera tráfego contínuo imitando fluxos reais de compra                              |
 
 O uso de cinco linguagens é deliberado: demonstra que o contrato entre serviços
 (Protocol Buffers, disponíveis no diretório `./protos`) é o que importa, e não
@@ -99,18 +99,18 @@ chamado "Continuous Integration - Main/Release", e o diretório
 
 ## 7. Semelhanças com a Loja Veloz
 
-| Aspecto | Ambos |
-|---|---|
-| Domínio | Comércio eletrônico com carrinho, pedido e pagamento |
-| Estilo | Microsserviços independentes, um processo por responsabilidade |
-| Empacotamento | Contêineres, um por serviço |
-| Orquestração | Kubernetes |
-| Configuração | Kustomize com base e variações/overlays |
-| CI/CD | GitHub Actions |
-| IaC | Terraform |
-| Pagamento | **Simulado**, sem provedor externo real |
-| Autenticação | Ausente — o Online Boutique gera sessão automática; a Loja Veloz não tem login |
-| Portabilidade | Roda em cluster local e em nuvem |
+| Aspecto       | Ambos                                                                          |
+| ------------- | ------------------------------------------------------------------------------ |
+| Domínio       | Comércio eletrônico com carrinho, pedido e pagamento                           |
+| Estilo        | Microsserviços independentes, um processo por responsabilidade                 |
+| Empacotamento | Contêineres, um por serviço                                                    |
+| Orquestração  | Kubernetes                                                                     |
+| Configuração  | Kustomize com base e variações/overlays                                        |
+| CI/CD         | GitHub Actions                                                                 |
+| IaC           | Terraform                                                                      |
+| Pagamento     | **Simulado**, sem provedor externo real                                        |
+| Autenticação  | Ausente — o Online Boutique gera sessão automática; a Loja Veloz não tem login |
+| Portabilidade | Roda em cluster local e em nuvem                                               |
 
 A coincidência em "pagamento simulado" e "sem autenticação" é reveladora: um
 projeto mantido pelo Google, com recursos praticamente ilimitados, chegou às
@@ -120,18 +120,18 @@ objetivo é demonstrar arquitetura, e não vender produtos.
 
 ## 8. Diferenças
 
-| Aspecto | Online Boutique | Loja Veloz |
-|---|---|---|
-| **Comunicação entre serviços** | gRPC síncrono; `checkoutservice` orquestra | Eventos assíncronos via RabbitMQ (topic exchange) |
-| **Acoplamento temporal** | Alto: pagamento fora do ar derruba o checkout | Baixo: o pedido é aceito e processado quando o serviço voltar |
-| **Contrato** | Protocol Buffers | Envelope JSON versionado com schema Zod |
-| **Linguagens** | Cinco (Go, C#, Node.js, Python, Java) | Uma (TypeScript), em monorepo |
-| **Persistência** | Redis no carrinho; catálogo em arquivo JSON | PostgreSQL com três bancos logicamente separados e Prisma |
-| **Estado do pedido** | Sem máquina de estados explícita | Cinco estados com transições validadas em ponto único |
-| **Idempotência** | Não aplicável no desenho síncrono | Tabela `processed_events` transacional |
-| **Nº de serviços** | 11 | 4 |
-| **Nuvem de referência** | Google Cloud | AWS |
-| **Escala** | 20,5 mil estrelas, mantido por equipe do Google | Projeto acadêmico de quatro semanas |
+| Aspecto                        | Online Boutique                                 | Loja Veloz                                                    |
+| ------------------------------ | ----------------------------------------------- | ------------------------------------------------------------- |
+| **Comunicação entre serviços** | gRPC síncrono; `checkoutservice` orquestra      | Eventos assíncronos via RabbitMQ (topic exchange)             |
+| **Acoplamento temporal**       | Alto: pagamento fora do ar derruba o checkout   | Baixo: o pedido é aceito e processado quando o serviço voltar |
+| **Contrato**                   | Protocol Buffers                                | Envelope JSON versionado com schema Zod                       |
+| **Linguagens**                 | Cinco (Go, C#, Node.js, Python, Java)           | Uma (TypeScript), em monorepo                                 |
+| **Persistência**               | Redis no carrinho; catálogo em arquivo JSON     | PostgreSQL com três bancos logicamente separados e Prisma     |
+| **Estado do pedido**           | Sem máquina de estados explícita                | Cinco estados com transições validadas em ponto único         |
+| **Idempotência**               | Não aplicável no desenho síncrono               | Tabela `processed_events` transacional                        |
+| **Nº de serviços**             | 11                                              | 4                                                             |
+| **Nuvem de referência**        | Google Cloud                                    | AWS                                                           |
+| **Escala**                     | 20,5 mil estrelas, mantido por equipe do Google | Projeto acadêmico de quatro semanas                           |
 
 ## 9. Aprendizados aplicados
 

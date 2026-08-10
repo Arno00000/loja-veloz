@@ -58,8 +58,8 @@ de banco de dados nem um serviço de validação, porque tais fronteiras produze
 acoplamento em vez de autonomia.
 
 `[Inserir Figura 1 — Diagrama de arquitetura geral, disponível em docs/architecture.md §2]`
-*Legenda sugerida: visão geral dos componentes, evidenciando que o Gateway não
-acessa banco e que não há comunicação HTTP entre serviços de backend.*
+_Legenda sugerida: visão geral dos componentes, evidenciando que o Gateway não
+acessa banco e que não há comunicação HTTP entre serviços de backend._
 
 ## 4. Dados
 
@@ -78,8 +78,8 @@ Cada banco possui a tabela `processed_events`, com o identificador do evento
 como chave primária, cuja função é discutida na seção 6.
 
 `[Inserir Figura 2 — Modelo entidade-relacionamento, disponível em docs/architecture.md §7]`
-*Legenda sugerida: entidades por serviço, com destaque para as restrições de
-unicidade que sustentam a idempotência.*
+_Legenda sugerida: entidades por serviço, com destaque para as restrições de
+unicidade que sustentam a idempotência._
 
 ## 5. Estado do pedido
 
@@ -94,12 +94,12 @@ métrica, e deliberadamente **não** enviada para reprocessamento: ela produziri
 o mesmo resultado em toda nova tentativa.
 
 `[Inserir Figura 3 — Diagrama de estados, disponível em docs/architecture.md §5]`
-*Legenda sugerida: transições permitidas; note que `stock.released` não altera
-o estado terminal `PAYMENT_FAILED`.*
+_Legenda sugerida: transições permitidas; note que `stock.released` não altera
+o estado terminal `PAYMENT_FAILED`._
 
 ## 6. Mensageria
 
-Utiliza-se um exchange do tipo *topic*, durável, com nove tipos de evento cuja
+Utiliza-se um exchange do tipo _topic_, durável, com nove tipos de evento cuja
 chave de roteamento é idêntica ao campo `eventType` do envelope — os três
 significados vivem no mesmo literal, o que elimina uma classe inteira de erros
 de configuração entre produtores e consumidores.
@@ -125,8 +125,8 @@ o registro do identificador do evento na mesma transação que aplica o efeito d
 negócio.
 
 `[Inserir Figura 4 — Topologia do RabbitMQ, disponível em docs/architecture.md §6]`
-*Legenda sugerida: três exchanges, seis filas de consumo e o caminho de
-reprocessamento com atraso.*
+_Legenda sugerida: três exchanges, seis filas de consumo e o caminho de
+reprocessamento com atraso._
 
 ## 7. Contêineres e ambiente local
 
@@ -139,7 +139,7 @@ do arquivo de bloqueio de dependências e dos pacotes compartilhados.
 As imagens executam com usuário sem privilégios administrativos e possuem
 verificação de saúde baseada no `fetch` nativo do Node — instalar um cliente
 HTTP apenas para essa finalidade aumentaria a superfície de ataque sem
-necessidade. A forma de execução em modo *exec* garante que o processo Node
+necessidade. A forma de execução em modo _exec_ garante que o processo Node
 receba o sinal de término diretamente, o que é o que torna o encerramento
 ordenado efetivamente acionável.
 
@@ -149,7 +149,7 @@ subida das aplicações — desenho que espelha a prática de produção melhor 
 um ponto de entrada que migra e sobe no mesmo processo.
 
 `[Inserir Figura 5 — Saída de `docker compose ps` com todos os serviços saudáveis]`
-*Legenda sugerida: estado dos contêineres após a subida completa da stack.*
+_Legenda sugerida: estado dos contêineres após a subida completa da stack._
 
 ## 8. Kubernetes
 
@@ -172,7 +172,7 @@ nenhuma regra permite comunicação HTTP entre serviços de backend, o que
 converte a decisão arquitetural em restrição efetiva de rede.
 
 `[Inserir Figura 6 — Saída de `kubectl get pods -n loja-veloz` com todos os pods prontos]`
-*Legenda sugerida: réplicas em execução no cluster.*
+_Legenda sugerida: réplicas em execução no cluster._
 
 ## 9. Estratégia de implantação
 
@@ -194,7 +194,7 @@ Deployments atrás do mesmo serviço não constituem canário. Entregar isso com
 se fosse seria um equívoco com consequências operacionais.
 
 O retorno à versão anterior é nativo, com uma ressalva importante: ele não
-desfaz migrações de banco. O fluxo de implantação em *staging* **não** executa
+desfaz migrações de banco. O fluxo de implantação em _staging_ **não** executa
 retorno automático quando houve migração, e emite aviso orientando o
 procedimento manual.
 
@@ -236,12 +236,12 @@ permite partir de uma linha de erro e chegar ao rastro correspondente com um
 clique.
 
 `[Inserir Figura 7 — Painel "Pedidos Veloz - Visão Geral" no Grafana]`
-*Legenda sugerida: taxa de requisições, latência por percentil, fluxo de
-pedidos e estado da mensageria.*
+_Legenda sugerida: taxa de requisições, latência por percentil, fluxo de
+pedidos e estado da mensageria._
 
 `[Inserir Figura 8 — Rastro completo de um pedido no Jaeger]`
-*Legenda sugerida: propagação do contexto do Gateway até a atualização final,
-atravessando o broker.*
+_Legenda sugerida: propagação do contexto do Gateway até a atualização final,
+atravessando o broker._
 
 ## 12. Segurança
 
@@ -273,7 +273,7 @@ de integração, construção, e validação de composição, manifestos e
 infraestrutura como código — os dois últimos sem necessidade de credencial de
 nuvem. O segundo constrói as quatro imagens em matriz, executa a varredura de
 vulnerabilidades **antes** da publicação e publica com etiqueta derivada do
-identificador do commit. O terceiro implanta em *staging*, com verificação
+identificador do commit. O terceiro implanta em _staging_, com verificação
 prévia de pré-requisitos, execução de migrações como tarefa dedicada,
 acompanhamento da atualização, testes de fumaça e retorno condicional.
 
@@ -285,7 +285,7 @@ para a mais recente.
 ## 14. Infraestrutura como código
 
 Três módulos Terraform — rede, cluster e banco — compõem dois ambientes. O de
-*staging* prioriza custo reduzido, com instâncias interrompíveis, sem gateway
+_staging_ prioriza custo reduzido, com instâncias interrompíveis, sem gateway
 de tradução de endereços e com banco em zona única. O de produção usa três
 zonas, instâncias sob demanda, redundância de zona no banco e proteção contra
 exclusão.
@@ -308,16 +308,16 @@ Terraform, 12 registros de decisão arquitetural, e documentação operacional c
 
 O que **não** foi validado, e precisa ser executado pelo leitor:
 
-| Comando | Estado |
-|---|---|
-| `npm install` | **PENDENTE DE EXECUÇÃO** — gera o arquivo de bloqueio real |
-| `npm run lint` / `format:check` / `typecheck` | **PENDENTE DE EXECUÇÃO** |
-| `npm run test` | **PENDENTE DE EXECUÇÃO** |
-| `npx prisma migrate dev --name init` (×3) | **PENDENTE DE EXECUÇÃO** — gera as migrações |
-| `docker compose config` / `up --build` | **PENDENTE DE EXECUÇÃO** |
-| `npm run test:integration` | **PENDENTE DE EXECUÇÃO** |
-| `kubectl kustomize` / `apply --dry-run` | **PENDENTE DE EXECUÇÃO** |
-| `terraform fmt` / `validate` / `plan` / `apply` | **PENDENTE DE EXECUÇÃO** |
+| Comando                                         | Estado                                                     |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| `npm install`                                   | **PENDENTE DE EXECUÇÃO** — gera o arquivo de bloqueio real |
+| `npm run lint` / `format:check` / `typecheck`   | **PENDENTE DE EXECUÇÃO**                                   |
+| `npm run test`                                  | **PENDENTE DE EXECUÇÃO**                                   |
+| `npx prisma migrate dev --name init` (×3)       | **PENDENTE DE EXECUÇÃO** — gera as migrações               |
+| `docker compose config` / `up --build`          | **PENDENTE DE EXECUÇÃO**                                   |
+| `npm run test:integration`                      | **PENDENTE DE EXECUÇÃO**                                   |
+| `kubectl kustomize` / `apply --dry-run`         | **PENDENTE DE EXECUÇÃO**                                   |
+| `terraform fmt` / `validate` / `plan` / `apply` | **PENDENTE DE EXECUÇÃO**                                   |
 
 Todo o restante encontra-se **VALIDADO POR INSPEÇÃO**: coerência de importações,
 caminhos, scripts, dependências, portas, nomes de serviços, bancos, usuários,
@@ -337,7 +337,7 @@ entre serviços; **ausência completa de autenticação**; ausência de expiraç
 reserva de estoque; cargas com estado simplificadas no cluster local; ausência
 de alta disponibilidade real do banco; **ausência de teste de carga** — motivo
 pelo qual nenhuma afirmação de desempenho neste projeto é sustentada por dados
-medidos; dependência de cluster para a implantação em *staging*; e Terraform
+medidos; dependência de cluster para a implantação em _staging_; e Terraform
 não aplicado.
 
 A lista completa, com motivo e consequência de cada item, está em

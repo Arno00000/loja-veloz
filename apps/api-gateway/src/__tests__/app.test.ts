@@ -216,10 +216,13 @@ describe('seguranca', () => {
   });
 
   it('aplica rate limit apos o limite configurado', async () => {
-    const { app } = buildApp(() => ({ statusCode: 200, body: { data: [] } }), baseEnv({
-      RATE_LIMIT_MAX: '3',
-      RATE_LIMIT_WINDOW_MS: '60000',
-    }));
+    const { app } = buildApp(
+      () => ({ statusCode: 200, body: { data: [] } }),
+      baseEnv({
+        RATE_LIMIT_MAX: '3',
+        RATE_LIMIT_WINDOW_MS: '60000',
+      })
+    );
 
     for (let i = 0; i < 3; i += 1) {
       const allowed = await request(app).get('/api/orders');
@@ -231,7 +234,10 @@ describe('seguranca', () => {
   });
 
   it('nao aplica rate limit aos healthchecks', async () => {
-    const { app } = buildApp(() => ({ statusCode: 200, body: {} }), baseEnv({ RATE_LIMIT_MAX: '1' }));
+    const { app } = buildApp(
+      () => ({ statusCode: 200, body: {} }),
+      baseEnv({ RATE_LIMIT_MAX: '1' })
+    );
 
     for (let i = 0; i < 5; i += 1) {
       const response = await request(app).get('/health/live');

@@ -10,7 +10,10 @@ export function getPrismaClient(databaseUrl: string): PrismaClient {
   if (!client) {
     client = new PrismaClient({
       datasources: { db: { url: databaseUrl } },
-      log: [{ emit: 'event', level: 'warn' }, { emit: 'event', level: 'error' }],
+      log: [
+        { emit: 'event', level: 'warn' },
+        { emit: 'event', level: 'error' },
+      ],
     });
   }
   return client;

@@ -2,11 +2,11 @@
 
 ## Os três pilares e o que cada um responde
 
-| Pilar | Ferramenta | Pergunta que responde |
-|---|---|---|
-| Métricas | Prometheus + Grafana | *Está acontecendo?* Quantos pedidos, qual a taxa de erro, qual a latência |
-| Logs | Loki + Alloy | *O que aconteceu neste caso?* Detalhe de uma execução específica |
-| Traces | Jaeger + OTel Collector | *Onde demorou?* Caminho da requisição entre serviços |
+| Pilar    | Ferramenta              | Pergunta que responde                                                     |
+| -------- | ----------------------- | ------------------------------------------------------------------------- |
+| Métricas | Prometheus + Grafana    | _Está acontecendo?_ Quantos pedidos, qual a taxa de erro, qual a latência |
+| Logs     | Loki + Alloy            | _O que aconteceu neste caso?_ Detalhe de uma execução específica          |
+| Traces   | Jaeger + OTel Collector | _Onde demorou?_ Caminho da requisição entre serviços                      |
 
 Nenhum dos três substitui os outros. Métrica não diz por que um pedido
 específico falhou; log não mostra a árvore de chamadas; trace não serve para
@@ -28,13 +28,13 @@ infraestrutura, não de código.
 
 Este é o ponto mais confundido do projeto, e a distinção é deliberada.
 
-**`correlationId`** identifica a *jornada de negócio*: um pedido, do `POST` até
+**`correlationId`** identifica a _jornada de negócio_: um pedido, do `POST` até
 o estado final. É gerado pelo Gateway (ou aceito do cliente, se tiver formato
 seguro), viaja em `x-correlation-id` no HTTP e nos headers da mensagem AMQP.
 Sobrevive a saltos assíncronos longos e a reprocessamentos — se um evento for
 reentregue horas depois, ele carrega o mesmo `correlationId`.
 
-**Trace context** (`traceparent`, padrão W3C) identifica uma *árvore de spans*
+**Trace context** (`traceparent`, padrão W3C) identifica uma _árvore de spans_
 de execução distribuída. É gerenciado pelo OpenTelemetry, tem amostragem, e
 descreve uma execução concreta com tempos.
 
@@ -119,12 +119,12 @@ ServiceAccount e RBAC próprios — ver `kubernetes/helm-values/alloy.values.yam
 
 ## Acessos locais
 
-| Interface | URL | Credencial |
-|---|---|---|
-| Grafana | http://localhost:3000 | `admin` / `admin` |
-| Prometheus | http://localhost:9090 | — |
-| Jaeger | http://localhost:16686 | — |
-| RabbitMQ Management | http://localhost:15672 | ver `.env` |
+| Interface           | URL                    | Credencial        |
+| ------------------- | ---------------------- | ----------------- |
+| Grafana             | http://localhost:3000  | `admin` / `admin` |
+| Prometheus          | http://localhost:9090  | —                 |
+| Jaeger              | http://localhost:16686 | —                 |
+| RabbitMQ Management | http://localhost:15672 | ver `.env`        |
 
 Credenciais de desenvolvimento, descartáveis. Em produção o Grafana usaria
 OIDC e nenhuma dessas interfaces seria exposta publicamente.

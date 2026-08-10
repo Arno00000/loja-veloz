@@ -10,8 +10,7 @@ export interface SimulatorOptions {
 }
 
 export type SimulationResult =
-  | { approved: true; externalReference: string }
-  | { approved: false; reason: string };
+  { approved: true; externalReference: string } | { approved: false; reason: string };
 
 export const DEMO_FAILURE_REASON =
   'Pagamento recusado pelo simulador: cliente de demonstracao com recusa deterministica';
@@ -32,9 +31,11 @@ export const DEMO_FAILURE_REASON =
 export class PaymentGatewaySimulator {
   constructor(private readonly options: SimulatorOptions) {}
 
-  async authorize(params: { orderId: string; customerId: string; amount: number }): Promise<
-    SimulationResult
-  > {
+  async authorize(params: {
+    orderId: string;
+    customerId: string;
+    amount: number;
+  }): Promise<SimulationResult> {
     if (this.options.processingDelayMs > 0) {
       await delay(this.options.processingDelayMs);
     }

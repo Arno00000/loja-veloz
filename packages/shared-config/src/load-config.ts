@@ -4,9 +4,7 @@ export class ConfigurationError extends Error {
   public readonly issues: string[];
 
   constructor(serviceHint: string, issues: string[]) {
-    super(
-      `Configuracao invalida em ${serviceHint}:\n` + issues.map((i) => `  - ${i}`).join('\n')
-    );
+    super(`Configuracao invalida em ${serviceHint}:\n` + issues.map((i) => `  - ${i}`).join('\n'));
     this.name = 'ConfigurationError';
     this.issues = issues;
   }

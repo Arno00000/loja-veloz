@@ -24,13 +24,13 @@ curl http://localhost:8080/health/ready
 bash tests/smoke/smoke.sh
 ```
 
-| Interface | URL | Credencial |
-|---|---|---|
-| Gateway | http://localhost:8080 | — |
-| Grafana | http://localhost:3000 | `admin` / `admin` |
-| Prometheus | http://localhost:9090 | — |
-| Jaeger | http://localhost:16686 | — |
-| RabbitMQ | http://localhost:15672 | ver `.env` |
+| Interface  | URL                    | Credencial        |
+| ---------- | ---------------------- | ----------------- |
+| Gateway    | http://localhost:8080  | —                 |
+| Grafana    | http://localhost:3000  | `admin` / `admin` |
+| Prometheus | http://localhost:9090  | —                 |
+| Jaeger     | http://localhost:16686 | —                 |
+| RabbitMQ   | http://localhost:15672 | ver `.env`        |
 
 **Recriar do zero** (apaga todos os dados):
 
@@ -94,15 +94,15 @@ requeue true`.
 
 Os headers dizem o motivo:
 
-| Header | Significado |
-|---|---|
-| `x-failure-reason: invalid_json` | Conteúdo não é JSON. **Nunca reprocessar** |
-| `x-failure-reason: unknown_event_type` | `eventType` fora do catálogo. **Nunca reprocessar** |
-| `x-failure-reason: contract_violation` | Payload viola o schema. **Nunca reprocessar** |
-| `x-failure-reason: retries_exhausted` | Falha transitória persistente. **Reprocessar após corrigir a causa** |
-| `x-failure-reason: non_retryable` | Handler sinalizou que retry não adianta |
-| `x-retry-count` | Quantas tentativas houve |
-| `x-original-queue` | Fila de origem |
+| Header                                 | Significado                                                          |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `x-failure-reason: invalid_json`       | Conteúdo não é JSON. **Nunca reprocessar**                           |
+| `x-failure-reason: unknown_event_type` | `eventType` fora do catálogo. **Nunca reprocessar**                  |
+| `x-failure-reason: contract_violation` | Payload viola o schema. **Nunca reprocessar**                        |
+| `x-failure-reason: retries_exhausted`  | Falha transitória persistente. **Reprocessar após corrigir a causa** |
+| `x-failure-reason: non_retryable`      | Handler sinalizou que retry não adianta                              |
+| `x-retry-count`                        | Quantas tentativas houve                                             |
+| `x-original-queue`                     | Fila de origem                                                       |
 
 ### 4.3 Reprocessar
 
@@ -201,7 +201,7 @@ Procedimento:
    **não** resolve. As opções são: corrigir para frente com um novo release,
    ou restaurar o banco do backup — e, nesse caso, perder os dados escritos
    desde o backup
-4. Registrar o incidente e revisar a migration: o padrão *expand and contract*
+4. Registrar o incidente e revisar a migration: o padrão _expand and contract_
    existe exatamente para evitar essa situação
 
 ## 8. Escala
@@ -250,13 +250,13 @@ SHOW max_connections;
 
 **Sinais de alerta e ação:**
 
-| Sinal | Provável causa | Ação |
-|---|---|---|
-| Filas crescendo, CPU baixa | HPA não reage (limitação do ADR-012) | Escalar manualmente |
-| Muitos `STOCK_FAILED` | Estoque real esgotado | Repor, se aplicável |
-| 5xx subindo no Gateway | Serviço interno degradado | Ver readiness e logs |
-| DLQ recebendo mensagens | Erro sistemático | Ver seção 4 |
-| Conexões do banco no teto | Réplicas demais | Reduzir `maxReplicas` |
+| Sinal                      | Provável causa                       | Ação                  |
+| -------------------------- | ------------------------------------ | --------------------- |
+| Filas crescendo, CPU baixa | HPA não reage (limitação do ADR-012) | Escalar manualmente   |
+| Muitos `STOCK_FAILED`      | Estoque real esgotado                | Repor, se aplicável   |
+| 5xx subindo no Gateway     | Serviço interno degradado            | Ver readiness e logs  |
+| DLQ recebendo mensagens    | Erro sistemático                     | Ver seção 4           |
+| Conexões do banco no teto  | Réplicas demais                      | Reduzir `maxReplicas` |
 
 ## 10. Encerrar e limpar
 

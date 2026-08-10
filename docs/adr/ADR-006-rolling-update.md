@@ -35,13 +35,13 @@ derruba um antigo.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Recreate** | Derruba tudo antes de subir o novo. É exatamente o problema que se quer resolver |
-| **Blue/Green** | Zero indisponibilidade e rollback instantâneo, mas exige capacidade dobrada durante a transição e uma camada de roteamento para a troca. Custo alto para o ganho, com 4 serviços |
-| **Canary com Argo Rollouts** | É o que se faria com mais prazo. Exige instalar e operar um controlador adicional, definir métricas de análise e limiares de promoção. Fora do escopo de 4 semanas |
-| **Canary com Istio** | Idem, com um plano de controle inteiro junto. Ver ADR-008 |
-| **"Canary" com dois Deployments** | **Rejeitado explicitamente por ser falso.** Não faz divisão ponderada |
+| Alternativa                       | Por que não                                                                                                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Recreate**                      | Derruba tudo antes de subir o novo. É exatamente o problema que se quer resolver                                                                                                 |
+| **Blue/Green**                    | Zero indisponibilidade e rollback instantâneo, mas exige capacidade dobrada durante a transição e uma camada de roteamento para a troca. Custo alto para o ganho, com 4 serviços |
+| **Canary com Argo Rollouts**      | É o que se faria com mais prazo. Exige instalar e operar um controlador adicional, definir métricas de análise e limiares de promoção. Fora do escopo de 4 semanas               |
+| **Canary com Istio**              | Idem, com um plano de controle inteiro junto. Ver ADR-008                                                                                                                        |
+| **"Canary" com dois Deployments** | **Rejeitado explicitamente por ser falso.** Não faz divisão ponderada                                                                                                            |
 
 ## Consequências positivas
 
@@ -66,13 +66,13 @@ derruba um antigo.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Tráfego para pod que já começou a encerrar (502 esporádico) | `preStop: sleep 5` — a remoção dos endpoints e o SIGTERM acontecem em paralelo |
-| Pod recebendo tráfego antes de estar pronto | `readinessProbe` consulta banco e broker |
-| Processo morto durante partida lenta | `startupProbe` suspende liveness e readiness por até 90 s |
-| Mensagem perdida ao encerrar | Graceful shutdown: cancela consumo, termina o que está em voo, confirma, e só então fecha |
-| Rollback com migration destrutiva | Regra *expand and contract*; workflow **não** faz rollback automático quando houve migration, e emite aviso |
+| Risco                                                       | Mitigação                                                                                                   |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Tráfego para pod que já começou a encerrar (502 esporádico) | `preStop: sleep 5` — a remoção dos endpoints e o SIGTERM acontecem em paralelo                              |
+| Pod recebendo tráfego antes de estar pronto                 | `readinessProbe` consulta banco e broker                                                                    |
+| Processo morto durante partida lenta                        | `startupProbe` suspende liveness e readiness por até 90 s                                                   |
+| Mensagem perdida ao encerrar                                | Graceful shutdown: cancela consumo, termina o que está em voo, confirma, e só então fecha                   |
+| Rollback com migration destrutiva                           | Regra _expand and contract_; workflow **não** faz rollback automático quando houve migration, e emite aviso |
 
 ## Critérios de revisão
 

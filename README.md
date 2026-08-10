@@ -64,19 +64,19 @@ O `201 Created` significa **aceito**, não confirmado. O desfecho vem de
 
 ## Tecnologias
 
-| Camada | Escolha |
-|---|---|
-| Runtime | Node.js 22 LTS, TypeScript 5.6 |
-| Monorepo | npm workspaces |
-| HTTP | Express 4, Zod, Helmet, express-rate-limit |
-| Dados | PostgreSQL 16, Prisma 6 |
-| Mensageria | RabbitMQ 3.13 (amqplib) |
+| Camada          | Escolha                                                 |
+| --------------- | ------------------------------------------------------- |
+| Runtime         | Node.js 22 LTS, TypeScript 5.6                          |
+| Monorepo        | npm workspaces                                          |
+| HTTP            | Express 4, Zod, Helmet, express-rate-limit              |
+| Dados           | PostgreSQL 16, Prisma 6                                 |
+| Mensageria      | RabbitMQ 3.13 (amqplib)                                 |
 | Observabilidade | OpenTelemetry, Prometheus, Grafana, Loki, Alloy, Jaeger |
-| Contêineres | Docker, Compose, `node:22-bookworm-slim`, multi-stage |
-| Orquestração | Kubernetes, Kustomize, NGINX Ingress, HPA v2 |
-| CI/CD | GitHub Actions, GHCR, Trivy |
-| IaC | Terraform, AWS (EKS, RDS, VPC) |
-| Testes | Jest, Supertest |
+| Contêineres     | Docker, Compose, `node:22-bookworm-slim`, multi-stage   |
+| Orquestração    | Kubernetes, Kustomize, NGINX Ingress, HPA v2            |
+| CI/CD           | GitHub Actions, GHCR, Trivy                             |
+| IaC             | Terraform, AWS (EKS, RDS, VPC)                          |
+| Testes          | Jest, Supertest                                         |
 
 ## Pré-requisitos
 
@@ -141,13 +141,13 @@ docker compose up --build
 docker compose ps
 ```
 
-| Interface | URL | Credencial |
-|---|---|---|
-| API Gateway | http://localhost:8080 | — |
-| Grafana | http://localhost:3000 | `admin` / `admin` |
-| Prometheus | http://localhost:9090 | — |
-| Jaeger | http://localhost:16686 | — |
-| RabbitMQ | http://localhost:15672 | ver `.env` |
+| Interface   | URL                    | Credencial        |
+| ----------- | ---------------------- | ----------------- |
+| API Gateway | http://localhost:8080  | —                 |
+| Grafana     | http://localhost:3000  | `admin` / `admin` |
+| Prometheus  | http://localhost:9090  | —                 |
+| Jaeger      | http://localhost:16686 | —                 |
+| RabbitMQ    | http://localhost:15672 | ver `.env`        |
 
 PostgreSQL e os três serviços internos **não** são publicados no host.
 
@@ -193,10 +193,10 @@ bash scripts/create-order.sh sem-estoque      # STOCK_FAILED
 bash scripts/create-order.sh falha-pagamento  # PAYMENT_FAILED
 ```
 
-| Cenário | Gatilho | Desligar |
-|---|---|---|
-| Falha de estoque | `SKU-SEM-ESTOQUE`, saldo 0 no seed | repor via `POST /inventory/restock` |
-| Falha de pagamento | `CUSTOMER-PAYMENT-FAIL` | `PAYMENT_SIMULATION_ENABLED=false` |
+| Cenário            | Gatilho                            | Desligar                            |
+| ------------------ | ---------------------------------- | ----------------------------------- |
+| Falha de estoque   | `SKU-SEM-ESTOQUE`, saldo 0 no seed | repor via `POST /inventory/restock` |
+| Falha de pagamento | `CUSTOMER-PAYMENT-FAIL`            | `PAYMENT_SIMULATION_ENABLED=false`  |
 
 **São recursos acadêmicos de demonstração, não comportamento de produção.**
 Ambos vêm desligados no overlay de produção.
@@ -254,11 +254,11 @@ alteração de schema; o procedimento está no runbook.
 
 ## CI/CD
 
-| Workflow | Gatilho | Faz |
-|---|---|---|
-| `ci.yml` | PR e push | lint, format, typecheck, testes, build, valida Compose, Kustomize e Terraform |
-| `images.yml` | main e tags | build em matriz, Trivy **antes** do push, publica no GHCR |
-| `deploy-staging.yml` | manual | migrations, apply, rollout, smoke, rollback condicional |
+| Workflow             | Gatilho     | Faz                                                                           |
+| -------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `ci.yml`             | PR e push   | lint, format, typecheck, testes, build, valida Compose, Kustomize e Terraform |
+| `images.yml`         | main e tags | build em matriz, Trivy **antes** do push, publica no GHCR                     |
+| `deploy-staging.yml` | manual      | migrations, apply, rollout, smoke, rollback condicional                       |
 
 Imagens: `ghcr.io/<USUARIO_GITHUB>/loja-veloz-<serviço>:sha-<commit>`.
 
@@ -309,26 +309,26 @@ auditoria confiável. Análise completa em
 
 Execute na ordem. Substitua cada `PENDENTE` pelo resultado observado.
 
-| # | Comando | Resultado esperado | Status |
-|---|---|---|---|
-| 1 | `npm install` | `package-lock.json` criado | PENDENTE |
-| 2 | `npm run lint` | sem erros | PENDENTE |
-| 3 | `npm run format:check` | todos os arquivos formatados | PENDENTE |
-| 4 | `npm run prisma:generate` | client gerado nos 3 serviços | PENDENTE |
-| 5 | `npm run typecheck` | sem erros de tipo | PENDENTE |
-| 6 | `npm run test` | todas as suítes passando | PENDENTE |
-| 7 | `npm run build` | `dist/` em 8 workspaces | PENDENTE |
-| 8 | `docker compose config` | YAML resolvido, sem erro | PENDENTE |
-| 9 | `docker compose up --build` | 12 serviços; `*-migrate` com exit 0 | PENDENTE |
-| 10 | `docker compose ps` | serviços `healthy` | PENDENTE |
-| 11 | `curl localhost:8080/health/live` | `{"status":"ok",...}` | PENDENTE |
-| 12 | `curl localhost:8080/health/ready` | `{"status":"ready",...}` | PENDENTE |
-| 13 | `bash tests/smoke/smoke.sh` | todas as verificações OK | PENDENTE |
-| 14 | `npm run test:integration` | 6 blocos passando | PENDENTE |
-| 15 | `kubectl kustomize kubernetes/overlays/development` | YAML renderizado | PENDENTE |
-| 16 | `kubectl apply --dry-run=client -k .../development` | recursos validados | PENDENTE |
-| 17 | `terraform fmt -check -recursive terraform` | sem diferenças | PENDENTE |
-| 18 | `terraform validate` (staging e prod) | configuração válida | PENDENTE |
+| #   | Comando                                             | Resultado esperado                  | Status   |
+| --- | --------------------------------------------------- | ----------------------------------- | -------- |
+| 1   | `npm install`                                       | `package-lock.json` criado          | PENDENTE |
+| 2   | `npm run lint`                                      | sem erros                           | PENDENTE |
+| 3   | `npm run format:check`                              | todos os arquivos formatados        | PENDENTE |
+| 4   | `npm run prisma:generate`                           | client gerado nos 3 serviços        | PENDENTE |
+| 5   | `npm run typecheck`                                 | sem erros de tipo                   | PENDENTE |
+| 6   | `npm run test`                                      | todas as suítes passando            | PENDENTE |
+| 7   | `npm run build`                                     | `dist/` em 8 workspaces             | PENDENTE |
+| 8   | `docker compose config`                             | YAML resolvido, sem erro            | PENDENTE |
+| 9   | `docker compose up --build`                         | 12 serviços; `*-migrate` com exit 0 | PENDENTE |
+| 10  | `docker compose ps`                                 | serviços `healthy`                  | PENDENTE |
+| 11  | `curl localhost:8080/health/live`                   | `{"status":"ok",...}`               | PENDENTE |
+| 12  | `curl localhost:8080/health/ready`                  | `{"status":"ready",...}`            | PENDENTE |
+| 13  | `bash tests/smoke/smoke.sh`                         | todas as verificações OK            | PENDENTE |
+| 14  | `npm run test:integration`                          | 6 blocos passando                   | PENDENTE |
+| 15  | `kubectl kustomize kubernetes/overlays/development` | YAML renderizado                    | PENDENTE |
+| 16  | `kubectl apply --dry-run=client -k .../development` | recursos validados                  | PENDENTE |
+| 17  | `terraform fmt -check -recursive terraform`         | sem diferenças                      | PENDENTE |
+| 18  | `terraform validate` (staging e prod)               | configuração válida                 | PENDENTE |
 
 Nenhum destes foi executado. Ver
 [`docs/practical-report.md`](docs/practical-report.md) § 15.
@@ -366,20 +366,20 @@ OPA/Kyverno, backups testados e disaster recovery.
 
 ## Documentação
 
-| Documento | Conteúdo |
-|---|---|
-| [`docs/architecture.md`](docs/architecture.md) | Arquitetura completa, 6 diagramas |
-| [`docs/diagrams/README.md`](docs/diagrams/README.md) | Índice dos 9 diagramas |
-| [`docs/adr/`](docs/adr/) | 12 decisões arquiteturais |
-| [`docs/runbook.md`](docs/runbook.md) | Procedimentos operacionais |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | 29 problemas catalogados |
-| [`docs/threat-model.md`](docs/threat-model.md) | 15 ameaças com risco residual |
-| [`docs/case-study.md`](docs/case-study.md) | Online Boutique, verificado na fonte |
-| [`docs/theoretical-report.md`](docs/theoretical-report.md) | Relatório teórico |
-| [`docs/practical-report.md`](docs/practical-report.md) | Relatório prático |
-| [`docs/traceability-matrix.md`](docs/traceability-matrix.md) | Rastreabilidade dos requisitos |
-| [`docs/references.md`](docs/references.md) | Referências (ABNT NBR 6023) |
-| [`PROJECT_MANIFEST.md`](PROJECT_MANIFEST.md) | Manifesto dos arquivos autorais |
+| Documento                                                    | Conteúdo                             |
+| ------------------------------------------------------------ | ------------------------------------ |
+| [`docs/architecture.md`](docs/architecture.md)               | Arquitetura completa, 6 diagramas    |
+| [`docs/diagrams/README.md`](docs/diagrams/README.md)         | Índice dos 9 diagramas               |
+| [`docs/adr/`](docs/adr/)                                     | 12 decisões arquiteturais            |
+| [`docs/runbook.md`](docs/runbook.md)                         | Procedimentos operacionais           |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md)         | 29 problemas catalogados             |
+| [`docs/threat-model.md`](docs/threat-model.md)               | 15 ameaças com risco residual        |
+| [`docs/case-study.md`](docs/case-study.md)                   | Online Boutique, verificado na fonte |
+| [`docs/theoretical-report.md`](docs/theoretical-report.md)   | Relatório teórico                    |
+| [`docs/practical-report.md`](docs/practical-report.md)       | Relatório prático                    |
+| [`docs/traceability-matrix.md`](docs/traceability-matrix.md) | Rastreabilidade dos requisitos       |
+| [`docs/references.md`](docs/references.md)                   | Referências (ABNT NBR 6023)          |
+| [`PROJECT_MANIFEST.md`](PROJECT_MANIFEST.md)                 | Manifesto dos arquivos autorais      |
 
 ## Referências
 

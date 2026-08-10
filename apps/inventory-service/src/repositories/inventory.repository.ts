@@ -41,11 +41,7 @@ export interface InventoryRepository {
     orderId: string;
     items: RequestedItem[];
   }): Promise<ReserveResult>;
-  release(params: {
-    eventId: string;
-    eventType: string;
-    orderId: string;
-  }): Promise<ReleaseResult>;
+  release(params: { eventId: string; eventType: string; orderId: string }): Promise<ReleaseResult>;
   restock(sku: string, quantity: number, description?: string): Promise<InventoryItemRecord>;
 }
 
@@ -197,11 +193,7 @@ export class PrismaInventoryRepository implements InventoryRepository {
     }
   }
 
-  async restock(
-    sku: string,
-    quantity: number,
-    description?: string
-  ): Promise<InventoryItemRecord> {
+  async restock(sku: string, quantity: number, description?: string): Promise<InventoryItemRecord> {
     const item = await this.prisma.inventoryItem.upsert({
       where: { sku },
       create: {

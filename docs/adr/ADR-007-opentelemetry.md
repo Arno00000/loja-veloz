@@ -28,12 +28,12 @@ As aplicações **não conhecem o Jaeger**. Elas falam OTLP com o Collector.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Sem tracing** | Inviável: o requisito de rastreabilidade é explícito, e depurar fluxo assíncrono sem trace é adivinhação |
-| **SDK proprietário** (Datadog, New Relic) | Melhor experiência pronta, mas amarra a um fornecedor pago. Requisito do projeto: nenhuma dependência de API paga |
-| **Cliente Jaeger nativo** | Amarraria a aplicação ao backend. Trocar Jaeger por Tempo exigiria mudar código |
-| **OpenCensus** | Descontinuado, absorvido pelo OpenTelemetry |
+| Alternativa                                | Por que não                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sem tracing**                            | Inviável: o requisito de rastreabilidade é explícito, e depurar fluxo assíncrono sem trace é adivinhação                                    |
+| **SDK proprietário** (Datadog, New Relic)  | Melhor experiência pronta, mas amarra a um fornecedor pago. Requisito do projeto: nenhuma dependência de API paga                           |
+| **Cliente Jaeger nativo**                  | Amarraria a aplicação ao backend. Trocar Jaeger por Tempo exigiria mudar código                                                             |
+| **OpenCensus**                             | Descontinuado, absorvido pelo OpenTelemetry                                                                                                 |
 | **Enviar direto ao Jaeger, sem Collector** | Menos uma peça, mas perde o ponto de desacoplamento: amostragem, enriquecimento e troca de backend passariam a exigir redeploy da aplicação |
 
 ## Consequências positivas
@@ -58,13 +58,13 @@ As aplicações **não conhecem o Jaeger**. Elas falam OTLP com o Collector.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Collector fora do ar derrubando a aplicação | `initTracing` é **tolerante a falha**: se o SDK não subir, registra aviso e o serviço continua. Perder telemetria é preferível a parar de processar pedidos |
-| Express carregado antes da instrumentação, deixando o servidor sem spans | Ponto de entrada dedicado `@loja-veloz/observability/tracing` e `instrumentation.ts` como primeiro import de todo `server.ts` |
-| Volume e custo com amostragem em 100% | `OTEL_SAMPLING_RATIO` por ambiente: 1.0 em dev, 0.5 em staging, 0.1 em produção |
-| Dado sensível dentro de atributo de span | Nenhum payload é anexado a span; apenas identificadores e nomes de operação |
-| Versões desalinhadas quebrando o build | Agrupamento no Dependabot; nota de compatibilidade em `tracing.ts` |
+| Risco                                                                    | Mitigação                                                                                                                                                   |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Collector fora do ar derrubando a aplicação                              | `initTracing` é **tolerante a falha**: se o SDK não subir, registra aviso e o serviço continua. Perder telemetria é preferível a parar de processar pedidos |
+| Express carregado antes da instrumentação, deixando o servidor sem spans | Ponto de entrada dedicado `@loja-veloz/observability/tracing` e `instrumentation.ts` como primeiro import de todo `server.ts`                               |
+| Volume e custo com amostragem em 100%                                    | `OTEL_SAMPLING_RATIO` por ambiente: 1.0 em dev, 0.5 em staging, 0.1 em produção                                                                             |
+| Dado sensível dentro de atributo de span                                 | Nenhum payload é anexado a span; apenas identificadores e nomes de operação                                                                                 |
+| Versões desalinhadas quebrando o build                                   | Agrupamento no Dependabot; nota de compatibilidade em `tracing.ts`                                                                                          |
 
 ## Critérios de revisão
 

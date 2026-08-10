@@ -21,14 +21,10 @@ const inventoryConfigSchema = baseConfigSchema
     INVENTORY_RESTOCK_ENABLED: booleanFromEnv.default('false'),
     INVENTORY_ADMIN_KEY: z.string().min(8).optional(),
   })
-  .refine(
-    (config) => !config.INVENTORY_RESTOCK_ENABLED || Boolean(config.INVENTORY_ADMIN_KEY),
-    {
-      message:
-        'INVENTORY_ADMIN_KEY e obrigatorio quando INVENTORY_RESTOCK_ENABLED=true',
-      path: ['INVENTORY_ADMIN_KEY'],
-    }
-  );
+  .refine((config) => !config.INVENTORY_RESTOCK_ENABLED || Boolean(config.INVENTORY_ADMIN_KEY), {
+    message: 'INVENTORY_ADMIN_KEY e obrigatorio quando INVENTORY_RESTOCK_ENABLED=true',
+    path: ['INVENTORY_ADMIN_KEY'],
+  });
 
 export type InventoryServiceConfig = z.infer<typeof inventoryConfigSchema>;
 

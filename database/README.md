@@ -5,12 +5,12 @@
 Uma instância PostgreSQL, **três bancos logicamente separados**, um usuário por
 serviço:
 
-| Serviço | Banco | Usuário | Tabelas |
-|---|---|---|---|
-| Serviço de Pedidos | `orders_db` | `orders_user` | `orders`, `order_items`, `processed_events` |
-| Serviço de Estoque | `inventory_db` | `inventory_user` | `inventory_items`, `inventory_reservations`, `processed_events` |
-| Serviço de Pagamentos | `payments_db` | `payments_user` | `payments`, `processed_events` |
-| API Gateway | — | — | não possui banco |
+| Serviço               | Banco          | Usuário          | Tabelas                                                         |
+| --------------------- | -------------- | ---------------- | --------------------------------------------------------------- |
+| Serviço de Pedidos    | `orders_db`    | `orders_user`    | `orders`, `order_items`, `processed_events`                     |
+| Serviço de Estoque    | `inventory_db` | `inventory_user` | `inventory_items`, `inventory_reservations`, `processed_events` |
+| Serviço de Pagamentos | `payments_db`  | `payments_user`  | `payments`, `processed_events`                                  |
+| API Gateway           | —              | —                | não possui banco                                                |
 
 Cada serviço tem o seu próprio `schema.prisma`, as suas próprias migrations e
 a sua própria `DATABASE_URL`. **Nenhum serviço consulta tabelas de outro.** A

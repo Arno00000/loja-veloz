@@ -28,9 +28,12 @@ const validInput = {
 describe('calculateTotal', () => {
   it('soma em centavos para evitar erro de ponto flutuante', () => {
     expect(calculateTotal([{ quantity: 3, unitPrice: 0.1 }])).toBe(0.3);
-    expect(calculateTotal([{ quantity: 1, unitPrice: 0.1 }, { quantity: 1, unitPrice: 0.2 }])).toBe(
-      0.3
-    );
+    expect(
+      calculateTotal([
+        { quantity: 1, unitPrice: 0.1 },
+        { quantity: 1, unitPrice: 0.2 },
+      ])
+    ).toBe(0.3);
   });
 
   it('multiplica preco unitario pela quantidade', () => {

@@ -62,10 +62,7 @@ describe('POST /orders', () => {
       'quantidade fracionada',
       { customerId: 'C1', items: [{ sku: 'S1', quantity: 1.5, unitPrice: 5 }] },
     ],
-    [
-      'preco negativo',
-      { customerId: 'C1', items: [{ sku: 'S1', quantity: 1, unitPrice: -5 }] },
-    ],
+    ['preco negativo', { customerId: 'C1', items: [{ sku: 'S1', quantity: 1, unitPrice: -5 }] }],
     [
       'sku repetido',
       {

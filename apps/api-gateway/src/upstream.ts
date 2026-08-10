@@ -82,9 +82,7 @@ export class UpstreamClient {
           body = JSON.parse(text);
         } catch {
           // Resposta que nao e JSON indica servico interno em estado invalido.
-          throw new ServiceUnavailableError(
-            `Resposta nao-JSON recebida de ${request.target}`
-          );
+          throw new ServiceUnavailableError(`Resposta nao-JSON recebida de ${request.target}`);
         }
       }
 

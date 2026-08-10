@@ -119,11 +119,7 @@ export class InMemoryInventoryRepository implements InventoryRepository {
     };
   }
 
-  async restock(
-    sku: string,
-    quantity: number,
-    description?: string
-  ): Promise<InventoryItemRecord> {
+  async restock(sku: string, quantity: number, description?: string): Promise<InventoryItemRecord> {
     const existing = this.items.get(sku);
     if (existing) {
       existing.availableQuantity += quantity;

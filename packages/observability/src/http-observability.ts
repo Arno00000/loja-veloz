@@ -71,8 +71,7 @@ export function httpLoggerMiddleware(logger: Logger) {
       },
     },
     customProps: (_req, res) => ({
-      correlationId: (res as unknown as { locals?: Record<string, unknown> }).locals
-        ?.correlationId,
+      correlationId: (res as unknown as { locals?: Record<string, unknown> }).locals?.correlationId,
     }),
     customLogLevel: (_req, res, err) => {
       if (err || res.statusCode >= 500) {

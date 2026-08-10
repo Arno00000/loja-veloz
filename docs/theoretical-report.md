@@ -141,7 +141,7 @@ Duas decisões merecem justificativa teórica. A varredura de vulnerabilidades
 deve ocorrer antes da publicação, e não depois, pois escanear uma imagem já
 distribuída apenas documenta um problema que já se propagou. E o versionamento
 por identificador imutável de commit, em oposição ao uso exclusivo de uma
-etiqueta móvel como *latest*, é o que torna possível saber exatamente o que está
+etiqueta móvel como _latest_, é o que torna possível saber exatamente o que está
 em execução e retornar a uma versão anterior — não existe versão anterior de um
 ponteiro que sempre aponta para a mais recente.
 

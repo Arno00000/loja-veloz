@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { PaymentGatewaySimulator, DEMO_FAILURE_REASON } from '../services/payment-gateway.simulator';
+import {
+  PaymentGatewaySimulator,
+  DEMO_FAILURE_REASON,
+} from '../services/payment-gateway.simulator';
 import { PaymentService } from '../services/payment.service';
 import { InMemoryPaymentRepository, RecordingPublisher, silentLogger } from './fakes';
 

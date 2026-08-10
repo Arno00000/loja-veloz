@@ -2,21 +2,9 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { Resource } from '@opentelemetry/resources';
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-} from '@opentelemetry/semantic-conventions';
-import {
-  TraceIdRatioBasedSampler,
-  ParentBasedSampler,
-} from '@opentelemetry/sdk-trace-base';
-import {
-  propagation,
-  context,
-  trace,
-  SpanStatusCode,
-  type Span,
-} from '@opentelemetry/api';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import { TraceIdRatioBasedSampler, ParentBasedSampler } from '@opentelemetry/sdk-trace-base';
+import { propagation, context, trace, SpanStatusCode, type Span } from '@opentelemetry/api';
 
 export interface TracingOptions {
   serviceName: string;
@@ -128,34 +116,30 @@ export async function withSpan<T>(
 ): Promise<T> {
   const tracer = trace.getTracer(tracerName);
 
-  return tracer.startActiveSpan(
-    name,
-    { attributes },
-    async (span): Promise<T> => {
-      try {
-        const result = await fn(span);
+  return tracer.startActiveSpan(name, { attributes }, async (span): Promise<T> => {
+    try {
+      const result = await fn(span);
 
-        span.setStatus({
-          code: SpanStatusCode.OK,
-        });
+      span.setStatus({
+        code: SpanStatusCode.OK,
+      });
 
-        return result;
-      } catch (error) {
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: error instanceof Error ? error.message : String(error),
-        });
+      return result;
+    } catch (error) {
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : String(error),
+      });
 
-        if (error instanceof Error) {
-          span.recordException(error);
-        }
-
-        throw error;
-      } finally {
-        span.end();
+      if (error instanceof Error) {
+        span.recordException(error);
       }
+
+      throw error;
+    } finally {
+      span.end();
     }
-  );
+  });
 }
 
 /**
@@ -165,9 +149,7 @@ export async function withSpan<T>(
  * O RabbitMQ nao propaga contexto sozinho: a propagacao W3C
  * (`traceparent`/`tracestate`) e responsabilidade da aplicacao.
  */
-export function injectTraceContext(
-  carrier: Record<string, string> = {}
-): Record<string, string> {
+export function injectTraceContext(carrier: Record<string, string> = {}): Record<string, string> {
   propagation.inject(context.active(), carrier);
 
   return carrier;
@@ -177,10 +159,7 @@ export function injectTraceContext(
  * Reconstroi o contexto remoto a partir dos headers da mensagem e executa a
  * funcao dentro dele, ligando o span do consumidor ao span do produtor.
  */
-export function runWithExtractedContext<T>(
-  carrier: Record<string, unknown>,
-  fn: () => T
-): T {
+export function runWithExtractedContext<T>(carrier: Record<string, unknown>, fn: () => T): T {
   const normalized: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(carrier)) {
@@ -191,10 +170,7 @@ export function runWithExtractedContext<T>(
     }
   }
 
-  const extracted = propagation.extract(
-    context.active(),
-    normalized
-  );
+  const extracted = propagation.extract(context.active(), normalized);
 
   return context.with(extracted, fn);
 }

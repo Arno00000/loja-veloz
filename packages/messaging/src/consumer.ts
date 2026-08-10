@@ -97,7 +97,9 @@ export function decideFailureRoute(
   retryCount: number,
   maxRetries: number,
   retryable: boolean
-): { action: 'retry'; nextRetryCount: number } | { action: 'dead-letter'; reason: DeadLetterReason } {
+):
+  | { action: 'retry'; nextRetryCount: number }
+  | { action: 'dead-letter'; reason: DeadLetterReason } {
   if (!retryable) {
     return { action: 'dead-letter', reason: 'non_retryable' };
   }

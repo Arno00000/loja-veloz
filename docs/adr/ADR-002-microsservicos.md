@@ -29,11 +29,11 @@ de um conceito completo.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Monólito modular** | Honestamente, seria defensável. Resolveria deploy, ambiente e observabilidade com muito menos complexidade operacional. Foi descartado porque não permite escala independente por domínio e porque o objetivo acadêmico é demonstrar orquestração de serviços distribuídos |
-| **Dois serviços** (pedidos+estoque, pagamentos) | Menos complexidade, mas o acoplamento entre pedido e estoque no mesmo processo eliminaria justamente o cenário mais interessante: reserva assíncrona com compensação |
-| **Serverless (Lambda)** | Bom encaixe para carga em rajada, mas afastaria o projeto dos objetivos de contêiner e Kubernetes, além de amarrar a arquitetura a um provedor |
+| Alternativa                                     | Por que não                                                                                                                                                                                                                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Monólito modular**                            | Honestamente, seria defensável. Resolveria deploy, ambiente e observabilidade com muito menos complexidade operacional. Foi descartado porque não permite escala independente por domínio e porque o objetivo acadêmico é demonstrar orquestração de serviços distribuídos |
+| **Dois serviços** (pedidos+estoque, pagamentos) | Menos complexidade, mas o acoplamento entre pedido e estoque no mesmo processo eliminaria justamente o cenário mais interessante: reserva assíncrona com compensação                                                                                                       |
+| **Serverless (Lambda)**                         | Bom encaixe para carga em rajada, mas afastaria o projeto dos objetivos de contêiner e Kubernetes, além de amarrar a arquitetura a um provedor                                                                                                                             |
 
 ## Consequências positivas
 
@@ -62,12 +62,12 @@ de um conceito completo.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
-| Consistência eventual mal compreendida pelo cliente | Estados explícitos e consulta por `GET /orders/:id`; documentado no README |
-| Efeito parcial: estoque reservado e pagamento nunca processado | Timeout e DLQ com alerta; sem Saga completa, é uma limitação assumida |
+| Risco                                                                       | Mitigação                                                                          |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Consistência eventual mal compreendida pelo cliente                         | Estados explícitos e consulta por `GET /orders/:id`; documentado no README         |
+| Efeito parcial: estoque reservado e pagamento nunca processado              | Timeout e DLQ com alerta; sem Saga completa, é uma limitação assumida              |
 | "Monólito distribuído": serviços que não podem ser implantados isoladamente | Comunicação apenas por evento versionado; NetworkPolicy proíbe HTTP entre backends |
-| Complexidade acima da capacidade da equipe | Escopo deliberadamente pequeno: 4 serviços, 9 eventos, 1 linguagem |
+| Complexidade acima da capacidade da equipe                                  | Escopo deliberadamente pequeno: 4 serviços, 9 eventos, 1 linguagem                 |
 
 ## Critérios de revisão
 

@@ -4,7 +4,7 @@
 
 ## Contexto
 
-O padrão *Database per Service* diz que cada serviço deve ser dono exclusivo
+O padrão _Database per Service_ diz que cada serviço deve ser dono exclusivo
 dos seus dados. Aplicá-lo ao pé da letra significaria três instâncias
 PostgreSQL — três contêineres, três volumes, três healthchecks, três pontos de
 restauração — em um projeto de quatro semanas com foco em demonstrar o pipeline
@@ -16,11 +16,11 @@ A pergunta real: **qual parte do isolamento entrega o valor?**
 
 Uma instância PostgreSQL, **três bancos separados, três usuários separados**:
 
-| Serviço | Banco | Usuário |
-|---|---|---|
-| Pedidos | `orders_db` | `orders_user` |
-| Estoque | `inventory_db` | `inventory_user` |
-| Pagamentos | `payments_db` | `payments_user` |
+| Serviço    | Banco          | Usuário          |
+| ---------- | -------------- | ---------------- |
+| Pedidos    | `orders_db`    | `orders_user`    |
+| Estoque    | `inventory_db` | `inventory_user` |
+| Pagamentos | `payments_db`  | `payments_user`  |
 
 Cada serviço tem o seu `schema.prisma`, as suas migrations e a sua
 `DATABASE_URL`. Cada usuário tem permissão **apenas** no seu banco. O Gateway
@@ -31,12 +31,12 @@ credencial não permite.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-|---|---|
-| **Instância por serviço** | Correto para produção. Descartado no MVP por custo operacional. A migração não exige mudar código: só as três `DATABASE_URL` |
-| **Um banco, três schemas** | Isolamento mais fraco: um `GRANT` distraído torna tudo acessível. A separação por banco é uma fronteira mais difícil de violar por acidente |
-| **Um banco, tudo junto** | Elimina a fronteira. Em pouco tempo aparece o primeiro `JOIN` entre pedido e pagamento, e a arquitetura vira monólito distribuído |
-| **Um único `schema.prisma` compartilhado** | Expressamente rejeitado: daria a todos os serviços os tipos de todas as tabelas, convidando ao acoplamento |
+| Alternativa                                | Por que não                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Instância por serviço**                  | Correto para produção. Descartado no MVP por custo operacional. A migração não exige mudar código: só as três `DATABASE_URL`                |
+| **Um banco, três schemas**                 | Isolamento mais fraco: um `GRANT` distraído torna tudo acessível. A separação por banco é uma fronteira mais difícil de violar por acidente |
+| **Um banco, tudo junto**                   | Elimina a fronteira. Em pouco tempo aparece o primeiro `JOIN` entre pedido e pagamento, e a arquitetura vira monólito distribuído           |
+| **Um único `schema.prisma` compartilhado** | Expressamente rejeitado: daria a todos os serviços os tipos de todas as tabelas, convidando ao acoplamento                                  |
 
 ## Consequências positivas
 
@@ -60,11 +60,11 @@ credencial não permite.
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
+| Risco                                                | Mitigação                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Alguém adicionar permissão cruzada "temporariamente" | Script de init versionado e revisável; `REVOKE ALL ... FROM PUBLIC` explícito |
-| Esgotamento de conexões com o HPA escalando | `connection_limit=10` na URL e `maxReplicas` calibrado por esse teto |
-| Falsa sensação de que o isolamento é completo | Este ADR e `database/README.md` declaram exatamente o que falta |
+| Esgotamento de conexões com o HPA escalando          | `connection_limit=10` na URL e `maxReplicas` calibrado por esse teto          |
+| Falsa sensação de que o isolamento é completo        | Este ADR e `database/README.md` declaram exatamente o que falta               |
 
 ## Critérios de revisão
 

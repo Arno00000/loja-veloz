@@ -17,7 +17,10 @@ export function getPrismaClient(databaseUrl: string): PrismaClient {
     client = new PrismaClient({
       datasources: { db: { url: databaseUrl } },
       // Erros do Prisma sao registrados pelo logger da aplicacao, em JSON.
-      log: [{ emit: 'event', level: 'warn' }, { emit: 'event', level: 'error' }],
+      log: [
+        { emit: 'event', level: 'warn' },
+        { emit: 'event', level: 'error' },
+      ],
     });
   }
   return client;

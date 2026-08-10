@@ -27,15 +27,15 @@ fixada quebra o build sozinho na próxima release.
 
 ## O que cada comando faz
 
-| Comando | Precisa de credencial AWS? | Cria recurso? | Custo |
-|---|---|---|---|
-| `terraform fmt -check` | não | não | nenhum |
-| `terraform init -backend=false` | não | não | nenhum |
-| `terraform validate` | não | não | nenhum |
-| `terraform init` (com backend) | sim | não | nenhum |
-| `terraform plan` | sim | não | nenhum |
-| `terraform apply` | sim | **sim** | **cobrado** |
-| `terraform destroy` | sim | remove | interrompe a cobrança |
+| Comando                         | Precisa de credencial AWS? | Cria recurso? | Custo                 |
+| ------------------------------- | -------------------------- | ------------- | --------------------- |
+| `terraform fmt -check`          | não                        | não           | nenhum                |
+| `terraform init -backend=false` | não                        | não           | nenhum                |
+| `terraform validate`            | não                        | não           | nenhum                |
+| `terraform init` (com backend)  | sim                        | não           | nenhum                |
+| `terraform plan`                | sim                        | não           | nenhum                |
+| `terraform apply`               | sim                        | **sim**       | **cobrado**           |
+| `terraform destroy`             | sim                        | remove        | interrompe a cobrança |
 
 Os dois primeiros rodam no `ci.yml` a cada PR. `validate` checa sintaxe,
 tipos de variável e referências entre recursos **sem consultar a API da AWS** —
@@ -66,14 +66,14 @@ o que será executado é exatamente o que foi revisado.
 
 Este ambiente provisiona recursos **cobrados**. Os itens de maior impacto:
 
-| Recurso | Natureza da cobrança |
-|---|---|
-| EKS control plane | por hora, independentemente de uso |
-| Nós EC2 | por hora, por instância |
-| NAT Gateway | por hora **mais** por GB processado, mesmo ocioso |
-| RDS Multi-AZ | aproximadamente o dobro de single-AZ (provisiona duas instâncias) |
-| Load Balancer | por hora mais por capacidade utilizada |
-| CloudWatch Logs | por GB ingerido e armazenado |
+| Recurso           | Natureza da cobrança                                              |
+| ----------------- | ----------------------------------------------------------------- |
+| EKS control plane | por hora, independentemente de uso                                |
+| Nós EC2           | por hora, por instância                                           |
+| NAT Gateway       | por hora **mais** por GB processado, mesmo ocioso                 |
+| RDS Multi-AZ      | aproximadamente o dobro de single-AZ (provisiona duas instâncias) |
+| Load Balancer     | por hora mais por capacidade utilizada                            |
+| CloudWatch Logs   | por GB ingerido e armazenado                                      |
 
 **Este projeto não informa valores em moeda.** Preços variam por região, por
 conta e ao longo do tempo; publicar um número seria inventar dado. Use a

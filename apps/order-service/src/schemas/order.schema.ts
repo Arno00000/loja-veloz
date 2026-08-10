@@ -10,7 +10,10 @@ export const createOrderItemSchema = z.object({
     .min(1, 'sku e obrigatorio')
     .max(64, 'sku excede 64 caracteres')
     .regex(/^[A-Za-z0-9._-]+$/, 'sku aceita apenas letras, numeros, ponto, hifen e sublinhado'),
-  quantity: z.number().int('quantity deve ser inteiro').positive('quantity deve ser maior que zero'),
+  quantity: z
+    .number()
+    .int('quantity deve ser inteiro')
+    .positive('quantity deve ser maior que zero'),
   unitPrice: z
     .number()
     .nonnegative('unitPrice nao pode ser negativo')
