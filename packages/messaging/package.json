@@ -17,7 +17,7 @@
   "dependencies": {
     "@loja-veloz/observability": "1.0.0",
     "@loja-veloz/shared-types": "1.0.0",
-    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api": "^1.10.0",
     "amqplib": "^0.10.4",
     "prom-client": "^15.1.3",
     "zod": "^3.23.8"
